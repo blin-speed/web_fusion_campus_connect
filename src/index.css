@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+  --color-base: #FAFAF9; /* stone-50 */
+  --color-text: #334155; /* slate-700 */
+  --color-primary: #EA6A1F; /* warm orange */
+  --color-primary-hover: #D95A10;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--color-base);
+  color: var(--color-text);
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
