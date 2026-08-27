@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { initDB } from '../db/schema';
 import { SEED_USERS } from '../db/seed';
+import { withLiveTrustScores } from '../logic/stateMachine';
 
 const CurrentUserContext = createContext(null);
 
@@ -14,9 +15,9 @@ export function CurrentUserProvider({ children }) {
   const refreshUsers = useCallback(async () => {
     try {
       const db = await initDB();
-      const dbUsers = await db.getAll('users');
+      const [dbUsers, exchanges] = await Promise.all([db.getAll('users'), db.getAll('exchanges')]);
       if (dbUsers && dbUsers.length > 0) {
-        setUsers(dbUsers);
+        setUsers(withLiveTrustScores(dbUsers, exchanges));
       }
     } catch (err) {
       console.warn('Could not refresh users from DB:', err);
@@ -49,8 +50,6 @@ export function CurrentUserProvider({ children }) {
     const newUser = {
       id: 'u-' + Date.now().toString(36),
       name: name.trim(),
-      trustScore: 5.0,
-      ratingsCount: 1,
       department: department?.trim() || 'General Studies',
       year: year?.trim() || '1st Year',
       verificationStatus: 'verified',

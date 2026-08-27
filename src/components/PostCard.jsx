@@ -79,7 +79,7 @@ export default function PostCard({ post, onSelectPost }) {
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-3 text-xs text-slate-500">
-        <span>Owner: <strong className="text-slate-800">{ownerName}</strong> (★ {owner?.trustScore || 4.0})</span>
+        <span>Owner: <strong className="text-slate-800">{ownerName}</strong> (★ {owner?.trustScore == null ? 'N/A' : owner.trustScore.toFixed(1)})</span>
         <span className="font-bold text-orange-600 hover:text-orange-700">
           View Details →
         </span>

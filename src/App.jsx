@@ -16,6 +16,8 @@ import MyLending from './routes/MyLending';
 import Admin from './routes/Admin';
 import Profile from './routes/Profile';
 import Impact from './routes/Impact';
+import RequestsBoard from './routes/RequestsBoard';
+import CreateAccount from './routes/CreateAccount';
 
 // Top bar: search-first, no duplicate nav links
 function TopBar({ onSearch }) {
@@ -56,7 +58,7 @@ function FloatingCreateButton() {
   const location = useLocation();
 
   // Only show on feed/browse/post-detail/impact (not on admin, create, my-requests etc.)
-  const hiddenPaths = ['/create', '/my-requests', '/my-lending', '/admin', '/profile'];
+  const hiddenPaths = ['/create', '/my-requests', '/my-lending', '/admin', '/profile', '/requests-board'];
   const shouldHide = hiddenPaths.some((p) => location.pathname.startsWith(p));
   if (shouldHide) return null;
 
@@ -77,9 +79,9 @@ function FloatingCreateButton() {
       <button
         type="button"
         onClick={handleClick}
-        title="List a new item for lending"
+        title="Create New Listing"
         className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-2xl text-white shadow-lg hover:bg-orange-700 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-orange-300"
-        aria-label="List New Item"
+        aria-label="Create New Listing"
       >
         ＋
       </button>
@@ -114,6 +116,7 @@ function AppInner() {
   // Admin route renders completely outside the main layout
   const location = useLocation();
   const isAdminRoute = location.pathname === '/admin';
+  const isBrowseRoute = location.pathname === '/' || location.pathname === '/browse';
   if (isAdminRoute) {
     return (
       <Routes>
@@ -127,7 +130,7 @@ function AppInner() {
       <div className="min-h-screen bg-stone-50 text-slate-700 flex flex-col">
         <TopBar onSearch={setTopbarQuery} />
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main className={`mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 ${isBrowseRoute ? 'lg:h-[calc(100vh-105px)] lg:overflow-hidden' : ''}`}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/browse" element={<Browse />} />
@@ -137,6 +140,8 @@ function AppInner() {
             <Route path="/my-lending" element={<MyLending />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/impact" element={<Impact />} />
+            <Route path="/requests-board" element={<RequestsBoard />} />
+            <Route path="/create-account" element={<CreateAccount />} />
           </Routes>
         </main>
 

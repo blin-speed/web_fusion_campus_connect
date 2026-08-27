@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 
-export default function RatingStars({ value = 4, onChange, interactive = false }) {
+export default function RatingStars({ value = null, onChange, interactive = false }) {
   const [hoverValue, setHoverValue] = useState(null);
   const stars = [1, 2, 3, 4, 5];
-  const displayValue = hoverValue !== null ? hoverValue : value;
+  const hasRating = typeof value === 'number';
+  const displayValue = hoverValue !== null ? hoverValue : (hasRating ? value : 0);
 
   return (
-    <div className="inline-flex items-center gap-1" aria-label={`Rating: ${value} out of 5`}>
+    <div className="inline-flex items-center gap-1" aria-label={hasRating ? `Rating: ${value} out of 5` : 'Rating: N/A'}>
       {stars.map((star) => (
         <button
           key={star}
@@ -23,7 +24,7 @@ export default function RatingStars({ value = 4, onChange, interactive = false }
         </button>
       ))}
       <span className="ml-1 text-xs text-gray-500">
-        ({typeof value === 'number' ? value.toFixed(1) : value}/5)
+        {hasRating ? `(${value.toFixed(1)}/5)` : '(N/A)'}
       </span>
     </div>
   );

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, Link, NavLink } from 'react-router-dom';
 import PostCard from '../components/PostCard';
 import { PostDetailView } from './PostDetail';
-import { getAllPosts } from '../logic/stateMachine';
+import { getAvailablePosts } from '../logic/stateMachine';
 import { searchPosts } from '../logic/search';
 import { useCurrentUser } from '../context/CurrentUserContext';
 import { useSearchContext } from '../App';
@@ -28,7 +28,7 @@ export default function Browse() {
 
   useEffect(() => {
     async function load() {
-      const posts = await getAllPosts();
+      const posts = await getAvailablePosts();
       setAllPosts(posts);
     }
     load();
@@ -50,8 +50,8 @@ export default function Browse() {
 
   // Filter posts: Permanently filter to post.status === "available" only
   const filteredPosts = useMemo(() => {
-    // 1. Available posts only (Lent/pending posts retired from feed)
-    let list = allPosts.filter((p) => p.status === 'available');
+    // The database query already restricts the public feed to available listings.
+    let list = allPosts;
 
     // 2. Filter by channel
     if (activeChannel !== 'all') {
@@ -95,6 +95,7 @@ export default function Browse() {
   const navLinks = [
     { to: '/', label: 'Feed', icon: '🏠' },
     { to: '/impact', label: 'Impact Dashboard', icon: '🌱', ungated: true },
+    { to: '/requests-board', label: 'Request Board', icon: '📣', ungated: true },
     { to: '/my-requests', label: 'My Requests', icon: '📦', gated: true },
     { to: '/my-lending', label: 'My Lending', icon: '🤝', gated: true },
     { to: '/profile', label: 'My Profile', icon: '👤', gated: true },
@@ -103,11 +104,11 @@ export default function Browse() {
   const availableTotal = allPosts.filter((p) => p.status === 'available').length;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+    <div className="grid grid-cols-1 gap-6 lg:h-full lg:min-h-0 lg:grid-cols-12">
       {/* ---------------------------------------------------- */}
       {/* LEFT SIDEBAR: Channels & Quick Navigation            */}
       {/* ---------------------------------------------------- */}
-      <aside className="lg:col-span-3 space-y-5">
+      <aside className="lg:col-span-3 lg:min-h-0 lg:overflow-visible space-y-5">
         {/* Channel / Category Directory */}
         <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
@@ -210,7 +211,7 @@ export default function Browse() {
       {/* ---------------------------------------------------- */}
       {/* CENTER COLUMN: Swappable Feed / Detail Content       */}
       {/* ---------------------------------------------------- */}
-      <section className="lg:col-span-6 space-y-4">
+      <section className="lg:col-span-6 lg:min-h-0 lg:overflow-y-auto lg:pr-2 space-y-4">
         {selectedPostId ? (
           <PostDetailView postId={selectedPostId} onBack={handleBackToFeed} />
         ) : (
@@ -268,7 +269,7 @@ export default function Browse() {
       {/* ---------------------------------------------------- */}
       {/* RIGHT SIDEBAR: Persistent Info & Community Stats     */}
       {/* ---------------------------------------------------- */}
-      <aside className="lg:col-span-3 space-y-5">
+      <aside className="lg:col-span-3 lg:min-h-0 lg:overflow-visible space-y-5">
         {/* Active User Status Card */}
         <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm space-y-2.5">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 font-heading">
@@ -282,7 +283,7 @@ export default function Browse() {
               <div className="min-w-0">
                 <p className="text-sm font-bold text-slate-900 truncate font-heading">{currentUser.name}</p>
                 <p className="text-xs text-slate-500 truncate">{currentUser.department}</p>
-                <p className="text-xs text-amber-600 font-semibold">★ {currentUser.trustScore} Trust Score</p>
+                <p className="text-xs text-amber-600 font-semibold">★ {currentUser.trustScore == null ? 'N/A' : currentUser.trustScore.toFixed(1)} Trust Score</p>
               </div>
             </div>
           ) : (

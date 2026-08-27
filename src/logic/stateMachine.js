@@ -33,6 +33,44 @@ export async function createPost(data) {
   return post;
 }
 
+/** Creates a public request for an item that is not currently listed. */
+export async function createDemandRequest(data) {
+  const db = await initDB();
+  const request = {
+    id: 'demand-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    requesterId: data.requesterId,
+    title: data.title.trim(),
+    description: data.description?.trim() || '',
+    channel: data.channel,
+    createdAt: new Date().toISOString(),
+    status: 'open',
+  };
+  await db.put('demandRequests', request);
+  return request;
+}
+
+/** Connects a newly-created listing to the request it fulfils. */
+export async function fulfillDemandRequest(demandRequestId, postId, fulfillerId) {
+  const db = await initDB();
+  const demandRequest = await db.get('demandRequests', demandRequestId);
+  if (!demandRequest || demandRequest.status !== 'open') {
+    throw new Error('This request is no longer open.');
+  }
+  if (demandRequest.requesterId === fulfillerId) {
+    throw new Error('You cannot fulfil your own request.');
+  }
+  demandRequest.status = 'fulfilled';
+  demandRequest.fulfilledByPostId = postId;
+  demandRequest.fulfilledAt = new Date().toISOString();
+  await db.put('demandRequests', demandRequest);
+  return demandRequest;
+}
+
+export async function getAllDemandRequests() {
+  const db = await initDB();
+  return db.getAll('demandRequests');
+}
+
 /**
  * Submits a borrow request for a post.
  * Precondition: post.status === 'available'
@@ -307,7 +345,7 @@ export async function markSettled(exchangeId) {
 }
 
 /**
- * Submits rating for settled exchange and recomputes owner's trustScore as simple running average.
+ * Submits a rating for a settled exchange. Trust is derived live from rated exchanges.
  * Precondition: exchange.state === 'settled'
  */
 export async function submitRating(exchangeId, value) {
@@ -327,19 +365,7 @@ export async function submitRating(exchangeId, value) {
   });
   await db.put('exchanges', exchange);
 
-  // Recompute owner trustScore
-  const owner = await db.get('users', exchange.ownerId);
-  if (owner) {
-    const currentCount = owner.ratingsCount || 5;
-    const currentScore = owner.trustScore || 4.0;
-    const newCount = currentCount + 1;
-    const newScore = ((currentScore * currentCount) + ratingVal) / newCount;
-    owner.trustScore = Math.round(newScore * 10) / 10;
-    owner.ratingsCount = newCount;
-    await db.put('users', owner);
-  }
-
-  return { exchange, owner };
+  return { exchange };
 }
 
 /**
@@ -413,6 +439,12 @@ export async function getAllPosts() {
   return db.getAll('posts');
 }
 
+/** The public feed never includes a pending, lent, or closed listing. */
+export async function getAvailablePosts() {
+  const db = await initDB();
+  return db.getAllFromIndex('posts', 'status', 'available');
+}
+
 export async function getPostById(id) {
   const db = await initDB();
   return db.get('posts', id);
@@ -420,12 +452,27 @@ export async function getPostById(id) {
 
 export async function getAllUsers() {
   const db = await initDB();
-  return db.getAll('users');
+  const [users, exchanges] = await Promise.all([db.getAll('users'), db.getAll('exchanges')]);
+  return withLiveTrustScores(users, exchanges);
 }
 
 export async function getUserById(id) {
   const db = await initDB();
-  return db.get('users', id);
+  const [user, exchanges] = await Promise.all([db.get('users', id), db.getAll('exchanges')]);
+  return user ? withLiveTrustScores([user], exchanges)[0] : undefined;
+}
+
+/** Adds derived trust fields without persisting a mutable score on users. */
+export function withLiveTrustScores(users, exchanges) {
+  return users.map((user) => {
+    const ratings = exchanges
+      .filter((exchange) => exchange.ownerId === user.id && exchange.state === 'rated' && Number.isFinite(exchange.rating))
+      .map((exchange) => exchange.rating);
+    const trustScore = ratings.length
+      ? Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10) / 10
+      : null;
+    return { ...user, trustScore, ratingsCount: ratings.length };
+  });
 }
 
 export async function getRequestsByBorrower(borrowerId) {
@@ -531,8 +578,12 @@ export async function getCampusImpactStats() {
   }
   const resourcesReusedCount = Object.values(postCompletedCount).filter((c) => c > 1).length;
 
-  const totalTrust = users.reduce((acc, u) => acc + (u.trustScore || 4.0), 0);
-  const avgTrustScore = users.length > 0 ? (Math.round((totalTrust / users.length) * 10) / 10).toFixed(1) : '4.5';
+  const trustRatings = completedExchanges
+    .map((exchange) => exchange.rating)
+    .filter((rating) => Number.isFinite(rating));
+  const avgTrustScore = trustRatings.length
+    ? (Math.round((trustRatings.reduce((sum, rating) => sum + rating, 0) / trustRatings.length) * 10) / 10).toFixed(1)
+    : 'N/A';
 
   return {
     activeMembersCount,
@@ -545,4 +596,3 @@ export async function getCampusImpactStats() {
     avgTrustScore,
   };
 }
-

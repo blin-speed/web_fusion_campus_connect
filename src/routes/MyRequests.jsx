@@ -94,7 +94,7 @@ export default function MyRequests() {
     try {
       await submitRating(exchangeId, value);
       await refreshUsers();
-      setFeedback(`Rating of ${value} stars submitted! Owner trustScore recomputed.`);
+      setFeedback(`Rating of ${value} stars submitted! Owner trust score updated.`);
       await loadData();
     } catch (err) {
       console.error('Failed to submit rating:', err);

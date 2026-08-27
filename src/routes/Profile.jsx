@@ -202,8 +202,8 @@ export default function Profile() {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm text-center">
           <span className="text-xs font-semibold uppercase text-slate-500 block">Trust Score</span>
-          <p className="text-3xl font-black text-amber-600 mt-1 font-heading">★ {currentUser.trustScore}</p>
-          <span className="text-[11px] text-slate-400">Based on {currentUser.ratingsCount} ratings</span>
+          <p className="text-3xl font-black text-amber-600 mt-1 font-heading">★ {currentUser.trustScore == null ? 'N/A' : currentUser.trustScore.toFixed(1)}</p>
+          <span className="text-[11px] text-slate-400">{currentUser.ratingsCount ? `Based on ${currentUser.ratingsCount} rating${currentUser.ratingsCount === 1 ? '' : 's'}` : 'No owner ratings yet'}</span>
         </div>
 
         <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm text-center">

@@ -11,7 +11,7 @@ export default function Impact() {
     popularCategoryCount: 3,
     moneySaved: 0,
     resourcesReusedCount: 0,
-    avgTrustScore: '4.3',
+    avgTrustScore: 'N/A',
   });
   const [loading, setLoading] = useState(true);
 

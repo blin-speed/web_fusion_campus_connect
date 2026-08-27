@@ -4,8 +4,6 @@ export const SEED_USERS = [
   {
     id: 'u1',
     name: 'Aisha',
-    trustScore: 4.5,
-    ratingsCount: 10,
     department: 'Computer Science & Engineering',
     year: '3rd Year',
     verificationStatus: 'verified',
@@ -13,8 +11,6 @@ export const SEED_USERS = [
   {
     id: 'u2',
     name: 'Rohan',
-    trustScore: 4.0,
-    ratingsCount: 8,
     department: 'Electrical Engineering',
     year: '4th Year',
     verificationStatus: 'verified',
@@ -22,8 +18,6 @@ export const SEED_USERS = [
   {
     id: 'u3',
     name: 'Meera',
-    trustScore: 4.8,
-    ratingsCount: 15,
     department: 'Film & Media Studies',
     year: '2nd Year',
     verificationStatus: 'verified',
@@ -31,8 +25,6 @@ export const SEED_USERS = [
   {
     id: 'u4',
     name: 'Kabir',
-    trustScore: 3.9,
-    ratingsCount: 7,
     department: 'Mechanical Engineering',
     year: '3rd Year',
     verificationStatus: 'verified',
@@ -40,8 +32,6 @@ export const SEED_USERS = [
   {
     id: 'u5',
     name: 'Diya',
-    trustScore: 4.2,
-    ratingsCount: 12,
     department: 'Civil Engineering',
     year: '4th Year',
     verificationStatus: 'verified',

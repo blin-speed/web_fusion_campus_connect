@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useCurrentUser } from '../context/CurrentUserContext';
 import channelsData from '../db/channels.json';
-import { createPost } from '../logic/stateMachine';
+import { createPost, fulfillDemandRequest } from '../logic/stateMachine';
 
 export default function CreatePost() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUserId, isGuest } = useCurrentUser();
 
   const channelKeys = Object.keys(channelsData);
 
+  const demandRequest = location.state?.demandRequest;
   const [formData, setFormData] = useState({
-    title: '',
-    channel: channelKeys[0] || 'Filming Equipment',
-    itemName: '',
+    title: demandRequest?.title || '',
+    channel: demandRequest?.channel || channelKeys[0] || 'Filming Equipment',
+    itemName: demandRequest?.title || '',
     location: '',
-    description: '',
+    description: demandRequest?.description || '',
     borrowingCost: '',
     securityDeposit: '',
   });
@@ -33,7 +35,7 @@ export default function CreatePost() {
 
     setIsSubmitting(true);
     try {
-      await createPost({
+      const post = await createPost({
         ownerId: currentUserId,
         title: formData.title.trim(),
         channel: formData.channel,
@@ -43,7 +45,12 @@ export default function CreatePost() {
         borrowingCost: Number(formData.borrowingCost || 0),
         securityDeposit: Number(formData.securityDeposit || 0),
       });
-      navigate('/browse');
+      if (demandRequest?.id) {
+        await fulfillDemandRequest(demandRequest.id, post.id, currentUserId);
+        navigate('/requests-board');
+      } else {
+        navigate('/browse');
+      }
     } catch (err) {
       console.error('Failed to create post:', err);
       setIsSubmitting(false);
@@ -72,6 +79,11 @@ export default function CreatePost() {
         <p className="text-sm text-slate-600 mb-6">
           Share your equipment, calculators, textbooks, or accessories with campus peers.
         </p>
+        {demandRequest && (
+          <div className="mb-5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-800">
+            You&apos;re fulfilling <strong>{demandRequest.title}</strong>. Publishing this listing will mark that request fulfilled.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

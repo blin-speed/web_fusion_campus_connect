@@ -211,7 +211,7 @@ export function PostDetailView({ postId, onBack }) {
                   {owner?.department || 'Verified Member'}
                 </span>
               </div>
-              <RatingStars value={owner?.trustScore || 4.0} />
+              <RatingStars value={owner?.trustScore ?? null} />
             </div>
           </div>
         </div>
@@ -259,7 +259,7 @@ export function PostDetailView({ postId, onBack }) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Lender / Owner:</span>
-                  <strong className="text-slate-900">{owner?.name || post.ownerId} (★ {owner?.trustScore})</strong>
+                  <strong className="text-slate-900">{owner?.name || post.ownerId} (★ {owner?.trustScore == null ? 'N/A' : owner.trustScore.toFixed(1)})</strong>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Borrower:</span>

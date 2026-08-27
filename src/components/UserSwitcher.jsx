@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../context/CurrentUserContext';
 
 export default function UserSwitcher() {
@@ -13,6 +13,7 @@ export default function UserSwitcher() {
     setAuthPromptOpen,
     authPromptMessage,
   } = useCurrentUser();
+  const navigate = useNavigate();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -37,6 +38,8 @@ export default function UserSwitcher() {
     logoutToGuest();
     setDropdownOpen(false);
   };
+
+  const trustLabel = (user) => user?.trustScore == null ? 'N/A' : user.trustScore.toFixed(1);
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
@@ -71,7 +74,7 @@ export default function UserSwitcher() {
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">{currentUser.department} • {currentUser.year}</p>
                 <div className="mt-2 flex items-center justify-between text-xs pt-1.5 border-t border-stone-200/60">
-                  <span className="text-amber-600 font-semibold">★ {currentUser.trustScore}</span>
+                  <span className="text-amber-600 font-semibold">★ {trustLabel(currentUser)}</span>
                   <Link
                     to="/profile"
                     onClick={() => setDropdownOpen(false)}
@@ -91,7 +94,7 @@ export default function UserSwitcher() {
             )}
           </div>
 
-          {/* 5 Seed Users List */}
+          {/* Seed and previously-created accounts */}
           <div className="space-y-1 my-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 block font-heading">
               Select User Account
@@ -117,13 +120,21 @@ export default function UserSwitcher() {
                       <span className="truncate">{user.name}</span>
                     </div>
                     <span className="text-[11px] text-slate-500 font-normal">
-                      ★ {user.trustScore}
+                      ★ {trustLabel(user)}
                     </span>
                   </button>
                 );
               })}
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => { setDropdownOpen(false); navigate('/create-account'); }}
+            className="w-full rounded-lg border border-dashed border-orange-300 bg-orange-50/50 px-2.5 py-2 text-left text-xs font-bold text-orange-700 hover:bg-orange-50"
+          >
+            ＋ Create New Account
+          </button>
 
           {/* Return to Guest Option */}
           {!isGuest && (
@@ -175,7 +186,7 @@ export default function UserSwitcher() {
                       <span className="text-[11px] text-slate-500">{u.department}</span>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-amber-600">★ {u.trustScore}</span>
+                  <span className="text-xs font-bold text-amber-600">★ {trustLabel(u)}</span>
                 </button>
               ))}
             </div>

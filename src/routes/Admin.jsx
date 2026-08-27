@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllComplaints, resolveComplaint } from '../logic/stateMachine';
 import { initDB } from '../db/schema';
+import { seedIfEmpty } from '../db/seed';
 
 const ADMIN_PASSWORD = 'admin123'; // Hardcoded demo password
 
@@ -37,6 +38,18 @@ function AdminDashboardContent() {
     }
   };
 
+  const handleResetDemoData = async () => {
+    if (!window.confirm('Are you sure? This clears all demo data and restores the original seed data.')) return;
+    const db = await initDB();
+    const storeNames = ['users', 'posts', 'requests', 'exchanges', 'complaints', 'demandRequests']
+      .filter((storeName) => db.objectStoreNames.contains(storeName));
+    const transaction = db.transaction(storeNames, 'readwrite');
+    await Promise.all(storeNames.map((storeName) => transaction.objectStore(storeName).clear()));
+    await transaction.done;
+    await seedIfEmpty();
+    window.location.reload();
+  };
+
   const getRaiserName = (userId) => {
     const u = allUsers.find((user) => user.id === userId);
     return u ? u.name : userId;
@@ -63,6 +76,15 @@ function AdminDashboardContent() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleResetDemoData}
+            className="rounded border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
+          >
+            Reset Demo Data
+          </button>
+        </div>
         {/* Admin Overview Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">

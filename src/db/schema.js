@@ -1,13 +1,14 @@
 import { openDB } from 'idb';
 
 export const DB_NAME = 'campus_circular_db';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 /**
  * IndexedDB Schema Definition for Campus Circular
  *
  * Stores & Indexes:
- * - users: keyPath: id | fields: id, name, trustScore, ratingsCount
+ * - users: keyPath: id | fields: id, name, department, year, verificationStatus
+ *   Trust score is derived from rated exchanges at read time.
  * - posts: keyPath: id | fields: id, ownerId, title, channel, itemName, description, borrowingCost, securityDeposit, location, status, createdAt
  *   Indexes: ownerId, status, channel
  * - requests: keyPath: id | fields: id, postId, borrowerId, status, createdAt
@@ -51,6 +52,14 @@ export async function initDB() {
         const complaintsStore = db.createObjectStore('complaints', { keyPath: 'id' });
         complaintsStore.createIndex('exchangeId', 'exchangeId', { unique: false });
         complaintsStore.createIndex('status', 'status', { unique: false });
+      }
+
+      // 6. public "wanted" requests, separate from borrow requests
+      if (!db.objectStoreNames.contains('demandRequests')) {
+        const demandStore = db.createObjectStore('demandRequests', { keyPath: 'id' });
+        demandStore.createIndex('requesterId', 'requesterId', { unique: false });
+        demandStore.createIndex('status', 'status', { unique: false });
+        demandStore.createIndex('channel', 'channel', { unique: false });
       }
     },
   });
