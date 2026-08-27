@@ -20,17 +20,17 @@ import RequestsBoard from './routes/RequestsBoard';
 import CreateAccount from './routes/CreateAccount';
 
 // Top bar: search-first, no duplicate nav links
-function TopBar({ onSearch }) {
+function TopBar({ onSearch, darkTheme, onToggleTheme }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/95 backdrop-blur shadow-sm">
+    <header className={`sticky top-0 z-40 border-b backdrop-blur shadow-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-900/95 text-slate-100' : 'border-stone-200 bg-white/95'}`}>
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 sm:px-6">
         {/* Left: Logo with warm orange brand color */}
         <Link
           to="/"
           className="flex-shrink-0 flex items-center gap-2 group"
         >
-          <span className="text-xl font-extrabold tracking-tight text-orange-600 group-hover:text-orange-700 transition-colors font-heading">
-            Campus<span className="text-slate-800">Circular</span>
+          <span className="text-xl font-extrabold tracking-tight text-orange-600 dark:text-orange-500 group-hover:text-orange-500 transition-colors font-heading">
+            Campus<span className={darkTheme ? 'text-slate-100' : 'text-slate-800'}>Circular</span>
           </span>
         </Link>
 
@@ -46,6 +46,16 @@ function TopBar({ onSearch }) {
         <div className="flex-shrink-0">
           <UserSwitcher />
         </div>
+
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          title={darkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-label={darkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border text-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700' : 'border-stone-200 bg-white text-slate-700 hover:bg-stone-100'}`}
+        >
+          {darkTheme ? '☀' : '☾'}
+        </button>
       </div>
     </header>
   );
@@ -103,6 +113,20 @@ function AppInner() {
   const { refreshUsers } = useCurrentUser();
   const [seeded, setSeeded] = useState(false);
   const [topbarQuery, setTopbarQuery] = useState('');
+  const [darkTheme, setDarkTheme] = useState(() => {
+    const saved = localStorage.getItem('cc_theme');
+    return saved ? saved === 'dark' : false;
+  });
+
+  useEffect(() => {
+    if (darkTheme) {
+      document.documentElement.classList.add('dark', 'dark-theme');
+      localStorage.setItem('cc_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark', 'dark-theme');
+      localStorage.setItem('cc_theme', 'light');
+    }
+  }, [darkTheme]);
 
   useEffect(() => {
     async function init() {
@@ -127,8 +151,8 @@ function AppInner() {
 
   return (
     <SearchContext.Provider value={{ query: topbarQuery, setQuery: setTopbarQuery }}>
-      <div className="min-h-screen bg-stone-50 text-slate-700 flex flex-col">
-        <TopBar onSearch={setTopbarQuery} />
+      <div className={`min-h-screen bg-stone-50 text-slate-700 flex flex-col ${darkTheme ? 'dark-theme' : ''}`}>
+        <TopBar onSearch={setTopbarQuery} darkTheme={darkTheme} onToggleTheme={() => setDarkTheme((current) => !current)} />
 
         <main className={`mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 ${isBrowseRoute ? 'lg:h-[calc(100vh-105px)] lg:overflow-hidden' : ''}`}>
           <Routes>
@@ -145,7 +169,7 @@ function AppInner() {
           </Routes>
         </main>
 
-        <footer className="border-t border-stone-200 bg-white py-4 text-center text-xs text-slate-500">
+        <footer className={`border-t py-4 text-center text-xs transition-colors ${darkTheme ? 'border-slate-700 bg-slate-800 text-slate-400' : 'border-stone-200 bg-white text-slate-500'}`}>
           Campus Circular • Peer-to-Peer Resource Lending Marketplace
         </footer>
 
