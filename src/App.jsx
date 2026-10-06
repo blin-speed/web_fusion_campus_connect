@@ -14,6 +14,7 @@ import CreatePost from './routes/CreatePost';
 import NeedDiscovery from './routes/NeedDiscovery';
 import MyRequests from './routes/MyRequests';
 import MyLending from './routes/MyLending';
+import ExchangeRoom from './routes/ExchangeRoom';
 import Admin from './routes/Admin';
 import Profile from './routes/Profile';
 import Impact from './routes/Impact';
@@ -142,6 +143,7 @@ function AppInner() {
             
             <Route path="/borrowing" element={<RequireUser user={true}><MyRequests /></RequireUser>} />
             <Route path="/lending" element={<RequireUser user={true}><MyLending /></RequireUser>} />
+            <Route path="/exchange/:id" element={<RequireUser user={true}><ExchangeRoom /></RequireUser>} />
             <Route path="/board" element={<RequestsBoard />} />
             <Route path="/profile" element={<RequireUser user={true}><Profile /></RequireUser>} />
             <Route path="/impact" element={<Impact />} />

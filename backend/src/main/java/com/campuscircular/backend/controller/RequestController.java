@@ -55,6 +55,11 @@ public class RequestController {
         return requestRepository.findAll().stream().filter(r -> r.getBorrower().getId().equals(AuthContext.getUserId())).toList();
     }
 
+    @GetMapping("/requests/incoming")
+    public List<Request> incoming() {
+        return requestRepository.findAll().stream().filter(r -> r.getPost().getOwner().getId().equals(AuthContext.getUserId())).toList();
+    }
+
     @GetMapping("/posts/{id}/requests")
     public List<Request> postRequests(@PathVariable Long id) {
         Post post = postRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
