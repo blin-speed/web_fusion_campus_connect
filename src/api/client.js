@@ -1,4 +1,4 @@
-import { getUserToken, getAdminToken } from './auth';
+﻿import { getUserToken, getAdminToken } from './auth';
 
 export class ApiError extends Error {
   constructor(status, code, message, details) {
@@ -58,7 +58,7 @@ export async function request(method, path, { body, query, form, signal, as = 'u
   const text = await response.text();
   let data = null;
   if (text) {
-    try { data = JSON.parse(text); } catch (e) { data = { _raw: text }; }
+    try { data = JSON.parse(text); } catch (_e) { data = { _raw: text }; }
   }
 
   if (!response.ok) {
@@ -81,3 +81,4 @@ export async function uploadPhoto(file, purpose, ids) {
   
   return request('POST', '/photos', { form });
 }
+

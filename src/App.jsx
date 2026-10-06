@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { CurrentUserProvider, useCurrentUser } from './context/CurrentUserContext';
 import UserSwitcher from './components/UserSwitcher';
@@ -43,7 +43,7 @@ function NotificationBell() {
           if (['accepted', 'pending_payment', 'handed_over', 'active'].includes(ex.status)) actionCount++;
         });
         setCount(actionCount);
-      } catch (e) {
+      } catch (_e) {
         // ignore
       }
     };
@@ -56,7 +56,7 @@ function NotificationBell() {
 
   return (
     <Link to="/" className="relative flex items-center justify-center w-8 h-8 rounded-full text-slate-500 hover:bg-stone-100 hover:text-slate-700 transition-colors mr-2">
-      <span className="text-xl">🔔</span>
+      <span className="text-xl">ðŸ””</span>
       {count > 0 && (
         <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
           {count}
@@ -216,5 +216,6 @@ export default function App() {
     </CurrentUserProvider>
   );
 }
+
 
 

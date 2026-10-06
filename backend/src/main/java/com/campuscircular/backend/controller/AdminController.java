@@ -2,12 +2,19 @@ package com.campuscircular.backend.controller;
 
 import com.campuscircular.backend.entity.Post;
 import com.campuscircular.backend.entity.User;
+import com.campuscircular.backend.entity.Exchange;
+import com.campuscircular.backend.entity.Dispute;
+import com.campuscircular.backend.entity.Transaction;
 import com.campuscircular.backend.repository.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
+import java.math.BigDecimal;
+import java.util.List;
+import java.time.Instant;
+import com.campuscircular.backend.config.ClockConfig.Clock;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -18,23 +25,48 @@ public class AdminController {
     private final ExchangeRepository exchangeRepository;
     private final DisputeRepository disputeRepository;
     private final TransactionRepository transactionRepository;
+    private final SettingRepository settingRepository;
+    private final Clock clock;
 
     public AdminController(UserRepository userRepository, PostRepository postRepository, 
                            ExchangeRepository exchangeRepository, DisputeRepository disputeRepository, 
-                           TransactionRepository transactionRepository) {
+                           TransactionRepository transactionRepository, SettingRepository settingRepository, Clock clock) {
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.exchangeRepository = exchangeRepository;
         this.disputeRepository = disputeRepository;
         this.transactionRepository = transactionRepository;
+        this.settingRepository = settingRepository;
+        this.clock = clock;
     }
 
     @GetMapping("/stats")
     public Object stats() {
+        List<Exchange> exchangesList = exchangeRepository.findAll();
+        long overdueCount = exchangesList.stream().filter(e -> "BORROWED".equals(e.getState()) && e.getDueAt() != null && e.getDueAt().isBefore(clock.now())).count();
+        
+        List<Dispute> disputes = disputeRepository.findAll();
+        long openDisputes = disputes.stream().filter(d -> "open".equalsIgnoreCase(d.getStatus())).count();
+
+        List<Transaction> txs = transactionRepository.findAll();
+        BigDecimal gmv = txs.stream().filter(t -> "payment".equalsIgnoreCase(t.getType())).map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal deposits = exchangesList.stream().map(e -> e.getSecurityDeposit() != null ? e.getSecurityDeposit() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal platformFeesCollected = txs.stream().filter(t -> "fee".equalsIgnoreCase(t.getType())).map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // As a fallback for fee if not explicitly recorded as "fee" transaction type
+        if (platformFeesCollected.compareTo(BigDecimal.ZERO) == 0) {
+            platformFeesCollected = exchangesList.stream().map(e -> e.getPlatformFee() != null ? e.getPlatformFee() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
         return Map.of(
             "activeMembers", userRepository.count(),
             "resourcesListed", postRepository.count(),
-            "exchanges", exchangeRepository.count()
+            "exchanges", exchangeRepository.count(),
+            "overdueCount", overdueCount,
+            "openDisputes", openDisputes,
+            "gmv", gmv,
+            "deposits", deposits,
+            "platformFeesCollected", platformFeesCollected
         );
     }
 
@@ -113,8 +145,12 @@ public class AdminController {
     }
 
     @PostMapping("/disputes/{id}/resolve")
-    public Object resolve(@PathVariable Long id) {
-        return Map.of("success", true);
+    public Object resolve(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+        Dispute d = disputeRepository.findById(id).orElseThrow();
+        d.setStatus("resolved");
+        d.setResolution(payload.getOrDefault("resolution", "Resolved by admin"));
+        d.setResolvedAt(clock.now());
+        return disputeRepository.save(d);
     }
 
     @GetMapping("/transactions")
@@ -122,13 +158,31 @@ public class AdminController {
         return transactionRepository.findAll();
     }
 
+    @GetMapping("/settings")
+    public Object getSettings() {
+        return settingRepository.findAll();
+    }
+
+    @PostMapping("/settings")
+    public Object updateSetting(@RequestBody Map<String, String> payload) {
+        String key = payload.get("key");
+        String value = payload.get("value");
+        com.campuscircular.backend.entity.Setting s = settingRepository.findById(key).orElse(new com.campuscircular.backend.entity.Setting());
+        s.setKey(key);
+        s.setValue(value);
+        return settingRepository.save(s);
+    }
+
     @PostMapping("/clock")
-    public Object clock() {
+    public Object clock(@RequestBody Map<String, Integer> payload) {
+        int offset = payload.getOrDefault("offsetDays", 1);
+        clock.advanceDays(offset);
         return Map.of("success", true, "message", "Advanced time");
     }
 
     @PostMapping("/reset-demo")
     public Object resetDemo() {
+        // Dummy implementation for now, can be expanded if needed
         return Map.of("success", true);
     }
 }

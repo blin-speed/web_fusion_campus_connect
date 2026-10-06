@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { request } from '../api/client.js';
 import { getUserToken, setUserToken } from '../api/auth.js';
 import { adaptUser } from '../api/adapters.js';
@@ -12,7 +12,7 @@ export function CurrentUserProvider({ children }) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         return parseInt(payload.sub, 10);
-      } catch (e) {
+      } catch (_e) {
         return null;
       }
     }
@@ -143,3 +143,4 @@ export function useCurrentUser() {
 }
 
 export default CurrentUserContext;
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { request } from '../api/client';
 import { useCurrentUser } from '../context/CurrentUserContext';
@@ -24,8 +24,8 @@ export default function ExchangeRoom() {
     try {
       const ex = await request('GET', `/exchanges/${id}`);
       setExchange(ex);
-    } catch (e) {
-      console.error(e);
+    } catch (_e) {
+      console.error(_e);
     } finally {
       setLoading(false);
     }
@@ -50,7 +50,7 @@ export default function ExchangeRoom() {
       setConditionNote('');
       setDamageAmount('');
       load();
-    } catch(e) {
+    } catch(_e) {
       alert("Failed action");
     }
   };
@@ -183,3 +183,6 @@ export default function ExchangeRoom() {
     </div>
   );
 }
+
+
+

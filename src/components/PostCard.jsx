@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function PostCard({ post }) {
@@ -61,12 +61,12 @@ export default function PostCard({ post }) {
         <div className="mt-3 flex items-center gap-3 text-xs bg-stone-50 p-2 rounded-lg border border-stone-200/80 dark:bg-slate-900/50 dark:border-slate-700">
           <div>
             <span className="text-slate-500 dark:text-slate-400">Rate: </span>
-            <strong className="text-slate-900 dark:text-slate-100 font-bold">₹{rate}/{rateUnit}</strong>
+            <strong className="text-slate-900 dark:text-slate-100 font-bold">â‚¹{rate}/{rateUnit}</strong>
           </div>
           <div className="text-stone-300 dark:text-slate-600">|</div>
           <div>
             <span className="text-slate-500 dark:text-slate-400">Deposit: </span>
-            <strong className="text-slate-900 dark:text-slate-100 font-bold">₹{securityDeposit}</strong>
+            <strong className="text-slate-900 dark:text-slate-100 font-bold">â‚¹{securityDeposit}</strong>
           </div>
         </div>
       </div>
@@ -74,9 +74,10 @@ export default function PostCard({ post }) {
       <div className="mt-4 flex items-center justify-between border-t border-stone-100 dark:border-slate-700 pt-3 text-xs text-slate-500 dark:text-slate-400">
         <span>Owner: <strong className="text-slate-800 dark:text-slate-200">{ownerName}</strong></span>
         <span className="font-bold text-orange-600 hover:text-orange-700">
-          View Details →
+          View Details â†’
         </span>
       </div>
     </div>
   );
 }
+

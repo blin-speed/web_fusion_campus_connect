@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { request } from '../api/client';
 import { useCurrentUser } from '../context/CurrentUserContext';
 import ExchangeCard from '../components/ExchangeCard';
@@ -31,7 +31,7 @@ export default function MyLending() {
     try {
       await request('POST', `/requests/${req.id}/accept`);
       load();
-    } catch (e) {
+    } catch (_e) {
       alert("Failed to accept");
     }
   };
@@ -40,7 +40,7 @@ export default function MyLending() {
     try {
       await request('POST', `/requests/${req.id}/reject`);
       load();
-    } catch (e) {
+    } catch (_e) {
       alert("Failed to reject");
     }
   };
@@ -117,3 +117,4 @@ export default function MyLending() {
     </div>
   );
 }
+
