@@ -23,6 +23,49 @@ import CreateAccount from './routes/CreateAccount';
 import RequireUser from './components/RequireUser';
 import Kit from './routes/_kit';
 import { Navigate } from 'react-router-dom';
+function NotificationBell() {
+  const { isGuest } = useCurrentUser();
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (isGuest) return;
+    const fetchCount = async () => {
+      try {
+        const [myOwner, myBorrower] = await Promise.all([
+          request('GET', '/exchanges/mine?role=owner').catch(() => []),
+          request('GET', '/exchanges/mine?role=borrower').catch(() => []),
+        ]);
+        let actionCount = 0;
+        (myOwner || []).forEach(ex => {
+          if (['pending_handover', 'paid', 'returned', 'pending_inspection'].includes(ex.status)) actionCount++;
+        });
+        (myBorrower || []).forEach(ex => {
+          if (['accepted', 'pending_payment', 'handed_over', 'active'].includes(ex.status)) actionCount++;
+        });
+        setCount(actionCount);
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 60000);
+    return () => clearInterval(interval);
+  }, [isGuest]);
+
+  if (isGuest) return null;
+
+  return (
+    <Link to="/" className="relative flex items-center justify-center w-8 h-8 rounded-full text-slate-500 hover:bg-stone-100 hover:text-slate-700 transition-colors mr-2">
+      <span className="text-xl">🔔</span>
+      {count > 0 && (
+        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+          {count}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 function TopBar({ onSearch, darkTheme, onToggleTheme }) {
   return (
     <header className={`sticky top-0 z-40 border-b backdrop-blur shadow-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-900/95 text-slate-100' : 'border-stone-200 bg-white/95'}`}>
@@ -35,7 +78,8 @@ function TopBar({ onSearch, darkTheme, onToggleTheme }) {
         <div className="flex-1 max-w-2xl">
           <SearchBar onSearch={onSearch} placeholder="Search items, textbooks, equipment..." />
         </div>
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 flex items-center">
+          <NotificationBell />
           <UserSwitcher />
         </div>
         <button
@@ -146,6 +190,7 @@ function AppInner() {
             <Route path="/exchange/:id" element={<RequireUser user={true}><ExchangeRoom /></RequireUser>} />
             <Route path="/board" element={<RequestsBoard />} />
             <Route path="/profile" element={<RequireUser user={true}><Profile /></RequireUser>} />
+            <Route path="/u/:id" element={<Profile />} />
             <Route path="/impact" element={<Impact />} />
             <Route path="/create-account" element={<CreateAccount />} />
             <Route path="/_kit" element={<Kit />} />
