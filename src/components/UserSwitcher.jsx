@@ -39,7 +39,7 @@ export default function UserSwitcher() {
     setDropdownOpen(false);
   };
 
-  const trustLabel = (user) => user?.trustScore == null ? 'N/A' : user.trustScore.toFixed(1);
+  const trustLabel = (user) => user?.trust?.score == null ? 'N/A' : user.trust.score;
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>

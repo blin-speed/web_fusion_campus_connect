@@ -1,11 +1,25 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { request } from '../api/client.js';
+import { getUserToken, setUserToken } from '../api/auth.js';
+import { adaptUser } from '../api/adapters.js';
 
 const CurrentUserContext = createContext(null);
 
 export function CurrentUserProvider({ children }) {
+  const [currentUserId, setCurrentUserId] = useState(() => {
+    const token = getUserToken();
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return parseInt(payload.sub, 10);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
   const [currentUser, setCurrentUser] = useState(null);
-  const [currentUserId, setCurrentUserId] = useState(null);
   const [users, setUsers] = useState([]);
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [authPromptMessage, setAuthPromptMessage] = useState('Sign in to continue');
@@ -13,7 +27,7 @@ export function CurrentUserProvider({ children }) {
   const refreshUsers = useCallback(async () => {
     try {
       const usersData = await request('GET', '/users');
-      setUsers(usersData);
+      if (Array.isArray(usersData)) setUsers(usersData.map(adaptUser));
     } catch (err) {
       console.warn('Could not refresh users from API:', err);
     }
@@ -23,7 +37,9 @@ export function CurrentUserProvider({ children }) {
     if (!currentUserId) return;
     try {
       const user = await request('GET', `/users/${currentUserId}`);
-      setCurrentUser(user);
+      if (user) {
+        setCurrentUser(adaptUser(user));
+      }
     } catch (err) {
       console.warn('Could not refresh current user:', err);
     }
@@ -44,9 +60,9 @@ export function CurrentUserProvider({ children }) {
   const login = async (userId) => {
     try {
       const res = await request('POST', '/auth/login', { body: { userId } });
-      sessionStorage.setItem('token', res.token);
+      setUserToken(res.token);
       setCurrentUserId(res.user.id);
-      setCurrentUser(res.user);
+      setCurrentUser(adaptUser(res.user));
       setAuthPromptOpen(false);
     } catch (err) {
       console.error('Login failed:', err);
@@ -55,7 +71,7 @@ export function CurrentUserProvider({ children }) {
   };
 
   const logoutToGuest = () => {
-    sessionStorage.removeItem('token');
+    setUserToken(null);
     setCurrentUserId(null);
     setCurrentUser(null);
   };
@@ -68,12 +84,12 @@ export function CurrentUserProvider({ children }) {
   const addNewUser = async (data) => {
     try {
       const res = await request('POST', '/auth/register', { body: data });
-      sessionStorage.setItem('token', res.token);
+      setUserToken(res.token);
       await refreshUsers();
       setCurrentUserId(res.user.id);
-      setCurrentUser(res.user);
+      setCurrentUser(adaptUser(res.user));
       setAuthPromptOpen(false);
-      return res.user;
+      return adaptUser(res.user);
     } catch (err) {
       console.error('Registration failed:', err);
       alert('Registration failed: ' + err.message);

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { request } from '../api/client';
+import { getAdminToken, setAdminToken } from '../api/auth';
 import { useNavigate } from 'react-router-dom';
 
 export default function Admin() {
-  const [token, setToken] = useState(sessionStorage.getItem('admin_token'));
+  const [token, setToken] = useState(getAdminToken());
   const [password, setPassword] = useState('');
   const [stats, setStats] = useState(null);
   const [error, setError] = useState('');
@@ -12,22 +13,20 @@ export default function Admin() {
     e.preventDefault();
     try {
       const res = await request('POST', '/admin/login', { body: { password } });
-      sessionStorage.setItem('admin_token', res.token);
+      setAdminToken(res.token);
       setToken(res.token);
-    } catch(e) {
+    } catch(err) {
       setError('Invalid password');
     }
   };
 
   const loadStats = async () => {
     try {
-      // Mock stats for demo if backend isn't returning yet
-      setStats({
-        activeMembers: 24,
-        resourcesListed: 50,
-        exchanges: 12
-      });
-    } catch(e) {}
+      const res = await request('GET', '/admin/stats', { as: 'admin' });
+      setStats(res);
+    } catch(err) {
+      setStats({ activeMembers: 0, resourcesListed: 0, exchanges: 0 });
+    }
   };
 
   useEffect(() => {
@@ -36,10 +35,10 @@ export default function Admin() {
 
   const handleClock = async () => {
     try {
-      await request('POST', '/admin/clock', { headers: { 'Authorization': `Bearer ${token}` }});
+      await request('POST', '/admin/clock', { body: { offsetDays: 1 }, as: 'admin' });
       alert('Time advanced +1 day!');
-    } catch(e) {
-      alert(e.message);
+    } catch(err) {
+      alert(err.message);
     }
   };
 

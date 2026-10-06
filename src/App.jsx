@@ -104,7 +104,6 @@ function AppInner() {
 
   const location = useLocation();
   const isAdminRoute = location.pathname === '/admin';
-  const isBrowseRoute = location.pathname === '/' || location.pathname === '/browse';
 
   if (isAdminRoute) {
     return (
@@ -124,7 +123,7 @@ function AppInner() {
         )}
         <TopBar onSearch={setTopbarQuery} darkTheme={darkTheme} onToggleTheme={() => setDarkTheme((current) => !current)} />
 
-        <main className={`mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 ${isBrowseRoute ? 'lg:h-[calc(100vh-105px)] lg:overflow-hidden' : ''}`}>
+        <main className={`mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8`}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/browse" element={<Browse />} />

@@ -79,7 +79,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
         <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-xl font-bold">Create New Listing</h2>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">~U</button>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
         </div>
         
         <div className="p-4 overflow-y-auto flex-1">
@@ -111,7 +111,7 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
             </div>
             <div className="flex gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium mb-1">Rate (~B1)</label>
+                <label className="block text-sm font-medium mb-1">Rate (₹)</label>
                 <input type="number" name="rate" required min="0" value={formData.rate} onChange={handleChange} className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600" />
               </div>
               <div className="flex-1">
@@ -124,11 +124,11 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
             </div>
             <div className="flex gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium mb-1">Security Deposit (~B1)</label>
+                <label className="block text-sm font-medium mb-1">Security Deposit (₹)</label>
                 <input type="number" name="securityDeposit" required min="0" value={formData.securityDeposit} onChange={handleChange} className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600" />
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium mb-1">Late Fee / Unit (~B1)</label>
+                <label className="block text-sm font-medium mb-1">Late Fee / Unit (₹)</label>
                 <input type="number" name="lateFeePerUnit" value={formData.lateFeePerUnit} onChange={handleChange} placeholder="Default = Rate" className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600" />
               </div>
             </div>

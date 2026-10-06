@@ -1,17 +1,30 @@
-export async function request(method, path, { body, query, form } = {}) {
+import { getUserToken, getAdminToken } from './auth';
+
+export class ApiError extends Error {
+  constructor(status, code, message, details) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+}
+
+export async function request(method, path, { body, query, form, signal, as = 'user' } = {}) {
   let url = `/api/v1${path}`;
   if (query) {
     const params = new URLSearchParams();
     for (const [key, val] of Object.entries(query)) {
-      if (val !== undefined && val !== null) {
+      if (val !== undefined && val !== null && val !== '') {
         params.append(key, val);
       }
     }
-    url += `?${params.toString()}`;
+    const qString = params.toString();
+    if (qString) url += `?${qString}`;
   }
 
   const headers = {};
-  const token = sessionStorage.getItem('token') || sessionStorage.getItem('adminToken');
+  const token = as === 'admin' ? getAdminToken() : getUserToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -19,6 +32,7 @@ export async function request(method, path, { body, query, form } = {}) {
   const options = {
     method,
     headers,
+    signal,
   };
 
   if (body) {
@@ -29,19 +43,29 @@ export async function request(method, path, { body, query, form } = {}) {
     options.body = form;
   }
 
-  const response = await fetch(url, options);
-  
-  if (response.status === 204) {
-    return null;
+  let response;
+  try {
+    response = await fetch(url, options);
+  } catch (error) {
+    if (error.name === 'AbortError') throw error;
+    throw new ApiError(0, 'NETWORK_ERROR', 'Network request failed. Please check your connection.');
   }
   
-  const data = await response.json().catch(() => null);
+  if (response.status === 204) {
+    return { _empty: true };
+  }
+  
+  const text = await response.text();
+  let data = null;
+  if (text) {
+    try { data = JSON.parse(text); } catch (e) { data = { _raw: text }; }
+  }
 
   if (!response.ok) {
-    const err = new Error(data?.error?.message || `HTTP ${response.status}`);
-    err.code = data?.error?.code || 'UNKNOWN';
-    err.details = data?.error?.details;
-    throw err;
+    const message = data?.error?.message || `HTTP ${response.status}`;
+    const code = data?.error?.code || 'UNKNOWN';
+    const details = data?.error?.details;
+    throw new ApiError(response.status, code, message, details);
   }
 
   return data;
