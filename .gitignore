@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/data/
+backend.zip
+generate.py
+generate_controllers.py
+.env
+

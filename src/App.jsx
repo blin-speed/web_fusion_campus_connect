@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { CurrentUserProvider, useCurrentUser } from './context/CurrentUserContext';
 import UserSwitcher from './components/UserSwitcher';
 import SearchBar from './components/SearchBar';
 import CreatePostModal from './components/CreatePostModal';
-import { seedIfEmpty } from './db/seed';
+import { request } from './api/client';
 
 // Route components
 import Home from './routes/Home';
@@ -19,55 +19,39 @@ import Impact from './routes/Impact';
 import RequestsBoard from './routes/RequestsBoard';
 import CreateAccount from './routes/CreateAccount';
 
-// Top bar: search-first, no duplicate nav links
 function TopBar({ onSearch, darkTheme, onToggleTheme }) {
   return (
     <header className={`sticky top-0 z-40 border-b backdrop-blur shadow-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-900/95 text-slate-100' : 'border-stone-200 bg-white/95'}`}>
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 sm:px-6">
-        {/* Left: Logo with warm orange brand color */}
-        <Link
-          to="/"
-          className="flex-shrink-0 flex items-center gap-2 group"
-        >
+        <Link to="/" className="flex-shrink-0 flex items-center gap-2 group">
           <span className="text-xl font-extrabold tracking-tight text-orange-600 dark:text-orange-500 group-hover:text-orange-500 transition-colors font-heading">
             Campus<span className={darkTheme ? 'text-slate-100' : 'text-slate-800'}>Circular</span>
           </span>
         </Link>
-
-        {/* Center: SearchBar (dominant) */}
         <div className="flex-1 max-w-2xl">
-          <SearchBar
-            onSearch={onSearch}
-            placeholder="Search items, textbooks, equipment..."
-          />
+          <SearchBar onSearch={onSearch} placeholder="Search items, textbooks, equipment..." />
         </div>
-
-        {/* Right: Account Switcher (Google-style) */}
         <div className="flex-shrink-0">
           <UserSwitcher />
         </div>
-
         <button
           type="button"
           onClick={onToggleTheme}
           title={darkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
-          aria-label={darkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
           className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border text-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700' : 'border-stone-200 bg-white text-slate-700 hover:bg-stone-100'}`}
         >
-          {darkTheme ? '☀' : '☾'}
+          {darkTheme ? '~?' : '~_'}
         </button>
       </div>
     </header>
   );
 }
 
-// Floating Create Post button (FAB) — fixed bottom-right in warm orange
 function FloatingCreateButton() {
   const { isGuest, promptSignIn } = useCurrentUser();
   const [modalOpen, setModalOpen] = useState(false);
   const location = useLocation();
 
-  // Only show on feed/browse/post-detail/impact (not on admin, create, my-requests etc.)
   const hiddenPaths = ['/create', '/my-requests', '/my-lending', '/admin', '/profile', '/requests-board'];
   const shouldHide = hiddenPaths.some((p) => location.pathname.startsWith(p));
   if (shouldHide) return null;
@@ -80,10 +64,6 @@ function FloatingCreateButton() {
     setModalOpen(true);
   };
 
-  const handlePostCreated = () => {
-    window.dispatchEvent(new CustomEvent('postCreated'));
-  };
-
   return (
     <>
       <button
@@ -91,28 +71,18 @@ function FloatingCreateButton() {
         onClick={handleClick}
         title="Create New Listing"
         className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-2xl text-white shadow-lg hover:bg-orange-700 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-orange-300"
-        aria-label="Create New Listing"
-      >
-        ＋
-      </button>
-
-      <CreatePostModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onPostCreated={handlePostCreated}
-      />
+      >+</button>
+      <CreatePostModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onPostCreated={() => window.dispatchEvent(new CustomEvent('postCreated'))} />
     </>
   );
 }
 
-// SearchContext used to pass topbar search queries into Browse
 const SearchContext = React.createContext({ query: '', setQuery: () => {} });
 export const useSearchContext = () => React.useContext(SearchContext);
 
 function AppInner() {
-  const { refreshUsers } = useCurrentUser();
-  const [seeded, setSeeded] = useState(false);
   const [topbarQuery, setTopbarQuery] = useState('');
+  const [backendUp, setBackendUp] = useState(true);
   const [darkTheme, setDarkTheme] = useState(() => {
     const saved = localStorage.getItem('cc_theme');
     return saved ? saved === 'dark' : false;
@@ -129,18 +99,13 @@ function AppInner() {
   }, [darkTheme]);
 
   useEffect(() => {
-    async function init() {
-      await seedIfEmpty();
-      await refreshUsers();
-      setSeeded(true);
-    }
-    init();
-  }, [refreshUsers]);
+    request('GET', '/locations').catch(() => setBackendUp(false));
+  }, []);
 
-  // Admin route renders completely outside the main layout
   const location = useLocation();
   const isAdminRoute = location.pathname === '/admin';
   const isBrowseRoute = location.pathname === '/' || location.pathname === '/browse';
+
   if (isAdminRoute) {
     return (
       <Routes>
@@ -152,6 +117,11 @@ function AppInner() {
   return (
     <SearchContext.Provider value={{ query: topbarQuery, setQuery: setTopbarQuery }}>
       <div className={`min-h-screen bg-stone-50 text-slate-700 flex flex-col ${darkTheme ? 'dark-theme' : ''}`}>
+        {!backendUp && (
+          <div className="bg-red-500 text-white text-center py-1 text-sm font-semibold shadow-sm z-50">
+            Backend is unreachable. Please ensure the Spring Boot server is running.
+          </div>
+        )}
         <TopBar onSearch={setTopbarQuery} darkTheme={darkTheme} onToggleTheme={() => setDarkTheme((current) => !current)} />
 
         <main className={`mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 ${isBrowseRoute ? 'lg:h-[calc(100vh-105px)] lg:overflow-hidden' : ''}`}>
@@ -170,10 +140,9 @@ function AppInner() {
         </main>
 
         <footer className={`border-t py-4 text-center text-xs transition-colors ${darkTheme ? 'border-slate-700 bg-slate-800 text-slate-400' : 'border-stone-200 bg-white text-slate-500'}`}>
-          Campus Circular • Peer-to-Peer Resource Lending Marketplace
+          Campus Circular ? Peer-to-Peer Resource Lending Marketplace
         </footer>
 
-        {/* Floating Action Button */}
         <FloatingCreateButton />
       </div>
     </SearchContext.Provider>
@@ -189,3 +158,5 @@ export default function App() {
     </CurrentUserProvider>
   );
 }
+
+

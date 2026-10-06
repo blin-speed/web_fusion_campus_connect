@@ -1,43 +1,63 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { initDB } from '../db/schema';
-import { SEED_USERS } from '../db/seed';
-import { withLiveTrustScores } from '../logic/stateMachine';
+import { request } from '../api/client.js';
 
 const CurrentUserContext = createContext(null);
 
 export function CurrentUserProvider({ children }) {
-  // Default state on load: Guest mode (null)
+  const [currentUser, setCurrentUser] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [users, setUsers] = useState(SEED_USERS);
+  const [users, setUsers] = useState([]);
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [authPromptMessage, setAuthPromptMessage] = useState('Sign in to continue');
 
   const refreshUsers = useCallback(async () => {
     try {
-      const db = await initDB();
-      const [dbUsers, exchanges] = await Promise.all([db.getAll('users'), db.getAll('exchanges')]);
-      if (dbUsers && dbUsers.length > 0) {
-        setUsers(withLiveTrustScores(dbUsers, exchanges));
-      }
+      const usersData = await request('GET', '/users');
+      setUsers(usersData);
     } catch (err) {
-      console.warn('Could not refresh users from DB:', err);
+      console.warn('Could not refresh users from API:', err);
     }
   }, []);
+
+  const refreshCurrentUser = useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      const user = await request('GET', `/users/${currentUserId}`);
+      setCurrentUser(user);
+    } catch (err) {
+      console.warn('Could not refresh current user:', err);
+    }
+  }, [currentUserId]);
 
   useEffect(() => {
     refreshUsers();
   }, [refreshUsers]);
 
-  const currentUser = currentUserId ? users.find((u) => u.id === currentUserId) || null : null;
-  const isGuest = !currentUser;
+  useEffect(() => {
+    if (currentUserId) {
+      refreshCurrentUser();
+    } else {
+      setCurrentUser(null);
+    }
+  }, [currentUserId, refreshCurrentUser]);
 
-  const login = (userId) => {
-    setCurrentUserId(userId);
-    setAuthPromptOpen(false);
+  const login = async (userId) => {
+    try {
+      const res = await request('POST', '/auth/login', { body: { userId } });
+      sessionStorage.setItem('token', res.token);
+      setCurrentUserId(res.user.id);
+      setCurrentUser(res.user);
+      setAuthPromptOpen(false);
+    } catch (err) {
+      console.error('Login failed:', err);
+      alert('Login failed: ' + err.message);
+    }
   };
 
   const logoutToGuest = () => {
+    sessionStorage.removeItem('token');
     setCurrentUserId(null);
+    setCurrentUser(null);
   };
 
   const promptSignIn = (message = 'Sign in to continue') => {
@@ -45,35 +65,34 @@ export function CurrentUserProvider({ children }) {
     setAuthPromptOpen(true);
   };
 
-  const addNewUser = async ({ name, department, year }) => {
-    const db = await initDB();
-    const newUser = {
-      id: 'u-' + Date.now().toString(36),
-      name: name.trim(),
-      department: department?.trim() || 'General Studies',
-      year: year?.trim() || '1st Year',
-      verificationStatus: 'verified',
-    };
-    await db.put('users', newUser);
-    await refreshUsers();
-    setCurrentUserId(newUser.id);
-    setAuthPromptOpen(false);
-    return newUser;
+  const addNewUser = async (data) => {
+    try {
+      const res = await request('POST', '/auth/register', { body: data });
+      sessionStorage.setItem('token', res.token);
+      await refreshUsers();
+      setCurrentUserId(res.user.id);
+      setCurrentUser(res.user);
+      setAuthPromptOpen(false);
+      return res.user;
+    } catch (err) {
+      console.error('Registration failed:', err);
+      alert('Registration failed: ' + err.message);
+    }
   };
 
   const updateProfile = async (userId, data) => {
-    const db = await initDB();
-    const user = await db.get('users', userId);
-    if (user) {
-      const updated = {
-        ...user,
-        ...data,
-      };
-      await db.put('users', updated);
+    try {
+      const updated = await request('PATCH', '/users/me', { body: data });
       await refreshUsers();
+      await refreshCurrentUser();
       return updated;
+    } catch (err) {
+      console.error('Update profile failed:', err);
+      throw err;
     }
   };
+
+  const isGuest = !currentUser;
 
   return (
     <CurrentUserContext.Provider

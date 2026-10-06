@@ -1,0 +1,18 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: campus_circular_db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: campus_circular
+      MYSQL_USER: ${DB_USER:-campus}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-campus}
+    ports: ["${DB_PORT:-3306}:3306"]
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+00:00"]
+    volumes: ["campus_db:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      retries: 20
+volumes:
+  campus_db:

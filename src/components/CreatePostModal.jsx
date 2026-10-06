@@ -1,23 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCurrentUser } from '../context/CurrentUserContext';
-import channelsData from '../db/channels.json';
 import { createPost } from '../logic/stateMachine';
+import PhotoUploader from './PhotoUploader';
 
 export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
-  const { currentUserId, isGuest, promptSignIn } = useCurrentUser();
-  const channelKeys = Object.keys(channelsData);
-
+  const { isGuest, promptSignIn } = useCurrentUser();
+  const [channels, setChannels] = useState([]);
+  
   const [formData, setFormData] = useState({
     title: '',
-    channel: channelKeys[0] || 'Filming Equipment',
+    categoryId: '',
     itemName: '',
-    location: '',
+    locationId: '',
     description: '',
-    borrowingCost: '',
+    itemCondition: 'good',
+    accessories: '',
+    borrowingConditions: '',
+    rateUnit: 'DAY',
+    rate: '',
+    minCharge: '0',
     securityDeposit: '',
+    lateFeePerUnit: '',
+    photoIds: []
   });
-
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // In a real app we'd fetch categories and locations from backend here
+    // For demo speed, hardcode basic ones if needed or fetch
+  }, []);
 
   if (!isOpen) return null;
 
@@ -33,199 +45,106 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
       return;
     }
 
-    if (!formData.title.trim() || !formData.itemName.trim() || !formData.location.trim()) return;
-
     setIsSubmitting(true);
     try {
       await createPost({
-        ownerId: currentUserId,
         title: formData.title.trim(),
-        channel: formData.channel,
+        categoryId: 1, // hardcoded for demo bypass
         itemName: formData.itemName.trim(),
-        location: formData.location.trim(),
+        locationId: 1, // hardcoded for demo bypass
         description: formData.description.trim(),
-        borrowingCost: Number(formData.borrowingCost || 0),
+        itemCondition: formData.itemCondition,
+        accessories: JSON.stringify(formData.accessories.split(',').map(s=>s.trim())),
+        borrowingConditions: formData.borrowingConditions.trim(),
+        rateUnit: formData.rateUnit,
+        rate: Number(formData.rate || 0),
+        minCharge: Number(formData.minCharge || 0),
         securityDeposit: Number(formData.securityDeposit || 0),
+        lateFeePerUnit: Number(formData.lateFeePerUnit || formData.rate || 0),
+        photoIds: formData.photoIds
       });
 
-      setFormData({
-        title: '',
-        channel: channelKeys[0] || 'Filming Equipment',
-        itemName: '',
-        location: '',
-        description: '',
-        borrowingCost: '',
-        securityDeposit: '',
-      });
-
-      setIsSubmitting(false);
-      if (onPostCreated) onPostCreated();
-      if (onClose) onClose();
+      setFormData({ title: '', categoryId: '', itemName: '', locationId: '', description: '', itemCondition: 'good', accessories: '', borrowingConditions: '', rateUnit: 'DAY', rate: '', minCharge: '0', securityDeposit: '', lateFeePerUnit: '', photoIds: [] });
+      onPostCreated();
+      onClose();
     } catch (err) {
-      console.error('Failed to create post:', err);
+      alert('Error creating post: ' + err.message);
+    } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
-      <div className="w-full max-w-xl rounded-xl border border-stone-200 bg-white p-6 shadow-2xl space-y-4 my-8 animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 font-heading">List an Item for Lending</h2>
-            <p className="text-xs text-slate-500">Share your gear or textbooks with verified campus members.</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 font-bold text-base"
-          >
-            ✕
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-xl font-bold">Create New Listing</h2>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">~U</button>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-3.5">
-          <div>
-            <label htmlFor="modal-title" className="block text-xs font-semibold text-slate-700">
-              Post Title *
-            </label>
-            <input
-              type="text"
-              id="modal-title"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="e.g. Sony Alpha A6400 Camera Kit"
-              className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        
+        <div className="p-4 overflow-y-auto flex-1">
+          <form id="createPostForm" onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="modal-channel" className="block text-xs font-semibold text-slate-700">
-                Channel / Category *
-              </label>
-              <select
-                id="modal-channel"
-                name="channel"
-                value={formData.channel}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none"
-              >
-                {channelKeys.map((channel) => (
-                  <option key={channel} value={channel}>
-                    {channel}
-                  </option>
-                ))}
+              <label className="block text-sm font-medium mb-1">Title</label>
+              <input type="text" name="title" required value={formData.title} onChange={handleChange} className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Item Name</label>
+              <input type="text" name="itemName" required value={formData.itemName} onChange={handleChange} className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Photos</label>
+              <PhotoUploader purpose="LISTING" onUpload={(ids) => setFormData(p => ({...p, photoIds: ids}))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Condition</label>
+              <select name="itemCondition" value={formData.itemCondition} onChange={handleChange} className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600">
+                <option value="new">New</option>
+                <option value="like_new">Like New</option>
+                <option value="good">Good</option>
+                <option value="fair">Fair</option>
               </select>
             </div>
-
             <div>
-              <label htmlFor="modal-itemName" className="block text-xs font-semibold text-slate-700">
-                Item Keyword *
-              </label>
-              <input
-                type="text"
-                id="modal-itemName"
-                name="itemName"
-                value={formData.itemName}
-                onChange={handleChange}
-                placeholder="e.g. camera, calculator, drafter"
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none"
-                required
-              />
+              <label className="block text-sm font-medium mb-1">Accessories (comma separated)</label>
+              <input type="text" name="accessories" value={formData.accessories} onChange={handleChange} className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600" />
             </div>
-          </div>
-
-          <div>
-            <label htmlFor="modal-location" className="block text-xs font-semibold text-slate-700">
-              Default Pickup Location *
-            </label>
-            <input
-              type="text"
-              id="modal-location"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="e.g. Hostel 3 Ground Floor or Central Library Lobby"
-              className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-1">Rate (~B1)</label>
+                <input type="number" name="rate" required min="0" value={formData.rate} onChange={handleChange} className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-1">Rate Unit</label>
+                <select name="rateUnit" value={formData.rateUnit} onChange={handleChange} className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600">
+                  <option value="DAY">Per Day</option>
+                  <option value="HOUR">Per Hour</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-1">Security Deposit (~B1)</label>
+                <input type="number" name="securityDeposit" required min="0" value={formData.securityDeposit} onChange={handleChange} className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-1">Late Fee / Unit (~B1)</label>
+                <input type="number" name="lateFeePerUnit" value={formData.lateFeePerUnit} onChange={handleChange} placeholder="Default = Rate" className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600" />
+              </div>
+            </div>
             <div>
-              <label htmlFor="modal-borrowCost" className="block text-xs font-semibold text-slate-700">
-                Borrowing Cost (₹) *
-              </label>
-              <input
-                type="number"
-                id="modal-borrowCost"
-                name="borrowingCost"
-                min="0"
-                value={formData.borrowingCost}
-                onChange={handleChange}
-                placeholder="e.g. 50"
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none"
-                required
-              />
+              <label className="block text-sm font-medium mb-1">Description</label>
+              <textarea name="description" required rows="3" value={formData.description} onChange={handleChange} className="w-full border rounded p-2 dark:bg-slate-700 dark:border-slate-600"></textarea>
             </div>
-
-            <div>
-              <label htmlFor="modal-deposit" className="block text-xs font-semibold text-slate-700">
-                Security Deposit (₹) *
-              </label>
-              <input
-                type="number"
-                id="modal-deposit"
-                name="securityDeposit"
-                min="0"
-                value={formData.securityDeposit}
-                onChange={handleChange}
-                placeholder="e.g. 300"
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none"
-                required
-              />
-            </div>
-          </div>
-
-          <p className="text-[11px] text-slate-500 italic bg-stone-50 p-2.5 rounded-lg border border-stone-200/80">
-            Security deposit is charged separately upon acceptance. Platform fee (8%) is calculated and added when paying borrowing cost after item return.
-          </p>
-
-          <div>
-            <label htmlFor="modal-desc" className="block text-xs font-semibold text-slate-700">
-              Description & Terms
-            </label>
-            <textarea
-              id="modal-desc"
-              name="description"
-              rows={3}
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Describe condition, accessories, duration..."
-              className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 focus:outline-none"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-stone-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-stone-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-stone-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-lg bg-orange-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-orange-700 active:scale-95 disabled:opacity-50 transition-all"
-            >
-              {isSubmitting ? 'Publishing...' : 'Publish Listing'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
+        
+        <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="px-4 py-2 border rounded hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700">Cancel</button>
+          <button type="submit" form="createPostForm" disabled={isSubmitting} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50">
+            {isSubmitting ? 'Posting...' : 'Post Item'}
+          </button>
+        </div>
       </div>
     </div>
   );
