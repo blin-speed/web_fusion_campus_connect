@@ -26,21 +26,20 @@ The app will be available at http://localhost:5173. The DB will automatically se
 This script covers the full lifecycle of a rental, including late fees, damage claims, and the admin resolution process.
 
 ### Scenario 1: Happy Path
-1. **Login**: Click on the Account Switcher (top right) and sign in as **Rohan** (Borrower).
+1. **Login**: Use the **Demo Dock (bottom left)** and switch user to **Rohan** (Borrower). (The Demo Dock is enabled via `VITE_DEMO=true`).
 2. **Discover & Quote**: Browse available items, or use the Need-Based AI search ("I need a camera for a shoot"). Click on **Aisha's Sony Alpha A6400**.
 3. **Request**: Pick dates for tomorrow. Review the auto-generated **Quote** and the **Agreement text**. Check the acceptance box and submit.
-4. **Acceptance**: Switch user to **Aisha** (Owner). Go to the notifications/requests area and **Accept** Rohan's request. The exchange moves to `payment_pending`.
+4. **Acceptance**: Use the Demo Dock to switch to **Aisha** (Owner). Go to the notifications/requests area and **Accept** Rohan's request. The exchange moves to `pending_payment`.
 5. **Payment**: Switch back to **Rohan**. Pay the deposit and fees. The item is now ready for `handover`.
-6. **Handover**: Switch to **Aisha**. Upload a "condition before" photo (or skip if testing without images) and confirm the item's condition. The item state becomes `borrowed`.
+6. **Handover**: Switch to **Aisha**. Upload a "condition before" photo (or skip if testing without images) and confirm the item's condition. The item state becomes `active`.
 7. **Return**: Switch to **Rohan**. Hand the item back and confirm return. State becomes `returned`.
 8. **Inspection & Settle**: Switch to **Aisha**. Inspect the item, report no damage. The exchange automatically settles. The platform holds the fee, and refunds Rohan's deposit.
 9. **Rating**: Both users can rate each other. Aisha's trust score updates.
 
 ### Scenario 2: Late Return via Time Travel
-1. Start a new exchange as above until the item is `borrowed`.
-2. Login as **Admin** (password: `admin123`).
-3. Go to Settings -> Advance Time, and add **+1 Day** to the clock.
-4. Switch to **Rohan** (Borrower). The item now shows as **Overdue** (Red state) with a live-accruing late fee.
+1. Start a new exchange as above until the item is `active`.
+2. Open the **Demo Dock** and click **Advance +1 Day** (this simulates time passing).
+3. Switch to **Rohan** (Borrower). The item now shows as **Overdue** (Red state) with a live-accruing late fee.
 5. Rohan returns the item. Aisha inspects.
 6. The system settles the transaction by deducting the late fee from Rohan's deposit and transferring it to Aisha.
 

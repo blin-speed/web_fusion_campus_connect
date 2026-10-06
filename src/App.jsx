@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { CurrentUserProvider, useCurrentUser } from './context/CurrentUserContext';
 import UserSwitcher from './components/UserSwitcher';
@@ -21,6 +21,7 @@ import Impact from './routes/Impact';
 import RequestsBoard from './routes/RequestsBoard';
 import CreateAccount from './routes/CreateAccount';
 import RequireUser from './components/RequireUser';
+import DemoDock from './components/DemoDock';
 import Kit from './routes/_kit';
 import { Navigate } from 'react-router-dom';
 function NotificationBell() {
@@ -69,27 +70,27 @@ function NotificationBell() {
 function TopBar({ onSearch, darkTheme, onToggleTheme }) {
   return (
     <header className={`sticky top-0 z-40 border-b backdrop-blur shadow-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-900/95 text-slate-100' : 'border-stone-200 bg-white/95'}`}>
-      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 sm:px-6">
-        <Link to="/" className="flex-shrink-0 flex items-center gap-2 group">
+      <div className="mx-auto flex max-w-7xl items-center justify-between flex-wrap gap-y-3 gap-x-4 px-4 py-2.5 sm:px-6">
+        <Link to="/" className="flex-shrink-0 flex items-center gap-2 group order-1">
           <span className="text-xl font-extrabold tracking-tight text-orange-600 dark:text-orange-500 group-hover:text-orange-500 transition-colors font-heading">
             Campus<span className={darkTheme ? 'text-slate-100' : 'text-slate-800'}>Circular</span>
           </span>
         </Link>
-        <div className="flex-1 max-w-2xl">
-          <SearchBar onSearch={onSearch} placeholder="Search items, textbooks, equipment..." />
+        <div className="w-full sm:flex-1 sm:max-w-2xl order-3 sm:order-2">
+          <SearchBar onSearch={onSearch} placeholder="Search items..." />
         </div>
-        <div className="flex-shrink-0 flex items-center">
+        <div className="flex-shrink-0 flex items-center order-2 sm:order-3">
           <NotificationBell />
           <UserSwitcher />
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            title={darkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+            className={`ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border text-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700' : 'border-stone-200 bg-white text-slate-700 hover:bg-stone-100'}`}
+          >
+            {darkTheme ? '☀️' : '🌙'}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          title={darkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
-          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border text-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700' : 'border-stone-200 bg-white text-slate-700 hover:bg-stone-100'}`}
-        >
-          {darkTheme ? '~?' : '~_'}
-        </button>
       </div>
     </header>
   );
@@ -202,6 +203,7 @@ function AppInner() {
         </footer>
 
         <FloatingCreateButton />
+        <DemoDock />
       </div>
     </SearchContext.Provider>
   );

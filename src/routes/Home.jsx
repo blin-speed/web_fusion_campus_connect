@@ -3,6 +3,7 @@ import { useCurrentUser } from '../context/CurrentUserContext';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import { request } from '../api/client';
+import { Skeleton } from '../components/ui/States';
 
 export default function Home() {
   const { isGuest, user } = useCurrentUser();
@@ -104,8 +105,9 @@ export default function Home() {
         </h3>
         
         {loading ? (
-          <div className="bg-white p-6 rounded-xl border border-stone-200 text-center text-slate-500">
-            Loading actions...
+          <div className="grid gap-3 animate-pulse">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
           </div>
         ) : actionItems.length > 0 ? (
           <div className="grid gap-3">

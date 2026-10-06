@@ -30,3 +30,19 @@ h1, h2, h3, h4, .font-heading {
   background-color: var(--color-base);
   color: var(--color-text);
 }
+
+/* Accessibility: Focus management */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Accessibility: Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

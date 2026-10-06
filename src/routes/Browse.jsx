@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { request } from "../api/client";
 import ListingCard from "../components/ListingCard";
+import { ListingSkeleton, EmptyState } from "../components/ui/States";
 
 export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,6 +23,15 @@ export default function Browse() {
     async function fetchPosts() {
       setLoading(true);
       try {
+        const filters = {
+          q: searchParams.get('q') || '',
+          categoryId: searchParams.get('categoryId') || '',
+          condition: searchParams.get('condition') || '',
+          maxDistanceM: searchParams.get('maxDistanceM') || '',
+          minOwnerRating: searchParams.get('minOwnerRating') || '',
+          price: searchParams.get('price') || '',
+          sort: searchParams.get('sort') || 'recent'
+        };
         const queryParams = new URLSearchParams();
         Object.entries(filters).forEach(([k, v]) => {
           if (v) queryParams.append(k, v);
@@ -72,11 +82,11 @@ export default function Browse() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12">Loading listings...</div>
-      ) : posts.length === 0 ? (
-        <div className="text-center py-12 text-slate-500 bg-white rounded shadow-sm border">
-          No items found matching your filters.
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => <ListingSkeleton key={i} />)}
         </div>
+      ) : posts.length === 0 ? (
+        <EmptyState title="No items found" message="Try adjusting your filters or search query." icon="🔍" />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {posts.map((post) => (
