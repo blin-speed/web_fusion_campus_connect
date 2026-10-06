@@ -37,6 +37,18 @@ public class ClockConfig {
         offset.set(duration);
     }
     
+    public void advanceDays(int days) {
+        offset.updateAndGet(d -> d.plus(Duration.ofDays(days)));
+    }
+
+    public void advanceHours(int hours) {
+        offset.updateAndGet(d -> d.plus(Duration.ofHours(hours)));
+    }
+
+    public void resetOffset() {
+        offset.set(Duration.ZERO);
+    }
+    
     public Duration getOffset() {
         return offset.get();
     }

@@ -14,7 +14,7 @@ import java.util.Map;
 import java.math.BigDecimal;
 import java.util.List;
 import java.time.Instant;
-import com.campuscircular.backend.config.ClockConfig.Clock;
+import java.time.Clock;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -27,10 +27,12 @@ public class AdminController {
     private final TransactionRepository transactionRepository;
     private final SettingRepository settingRepository;
     private final Clock clock;
+    private final com.campuscircular.backend.config.ClockConfig clockConfig;
 
     public AdminController(UserRepository userRepository, PostRepository postRepository, 
                            ExchangeRepository exchangeRepository, DisputeRepository disputeRepository, 
-                           TransactionRepository transactionRepository, SettingRepository settingRepository, Clock clock) {
+                           TransactionRepository transactionRepository, SettingRepository settingRepository, 
+                           Clock clock, com.campuscircular.backend.config.ClockConfig clockConfig) {
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.exchangeRepository = exchangeRepository;
@@ -38,12 +40,13 @@ public class AdminController {
         this.transactionRepository = transactionRepository;
         this.settingRepository = settingRepository;
         this.clock = clock;
+        this.clockConfig = clockConfig;
     }
 
     @GetMapping("/stats")
     public Object stats() {
         List<Exchange> exchangesList = exchangeRepository.findAll();
-        long overdueCount = exchangesList.stream().filter(e -> "BORROWED".equals(e.getState()) && e.getDueAt() != null && e.getDueAt().isBefore(clock.now())).count();
+        long overdueCount = exchangesList.stream().filter(e -> "BORROWED".equals(e.getState()) && e.getDueAt() != null && e.getDueAt().isBefore(clock.instant())).count();
         
         List<Dispute> disputes = disputeRepository.findAll();
         long openDisputes = disputes.stream().filter(d -> "open".equalsIgnoreCase(d.getStatus())).count();
@@ -149,7 +152,7 @@ public class AdminController {
         Dispute d = disputeRepository.findById(id).orElseThrow();
         d.setStatus("resolved");
         d.setResolution(payload.getOrDefault("resolution", "Resolved by admin"));
-        d.setResolvedAt(clock.now());
+        d.setResolvedAt(clock.instant());
         return disputeRepository.save(d);
     }
 
@@ -174,10 +177,10 @@ public class AdminController {
     }
 
     @PostMapping("/clock")
-    public Object clock(@RequestBody Map<String, Integer> payload) {
-        int offset = payload.getOrDefault("offsetDays", 1);
-        clock.advanceDays(offset);
-        return Map.of("success", true, "message", "Advanced time");
+    public Object clock(@RequestBody(required = false) Map<String, Integer> payload) {
+        int offset = (payload != null && payload.containsKey("offsetDays")) ? payload.get("offsetDays") : 1;
+        clockConfig.advanceDays(offset);
+        return Map.of("success", true, "message", "Advanced time by " + offset + " days", "currentInstant", clock.instant().toString());
     }
 
     @PostMapping("/reset-demo")
