@@ -18,7 +18,9 @@ import Profile from './routes/Profile';
 import Impact from './routes/Impact';
 import RequestsBoard from './routes/RequestsBoard';
 import CreateAccount from './routes/CreateAccount';
-
+import RequireUser from './components/RequireUser';
+import Kit from './routes/_kit';
+import { Navigate } from 'react-router-dom';
 function TopBar({ onSearch, darkTheme, onToggleTheme }) {
   return (
     <header className={`sticky top-0 z-40 border-b backdrop-blur shadow-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-900/95 text-slate-100' : 'border-stone-200 bg-white/95'}`}>
@@ -129,12 +131,19 @@ function AppInner() {
             <Route path="/browse" element={<Browse />} />
             <Route path="/post/:id" element={<PostDetail />} />
             <Route path="/create" element={<CreatePost />} />
-            <Route path="/my-requests" element={<MyRequests />} />
-            <Route path="/my-lending" element={<MyLending />} />
-            <Route path="/profile" element={<Profile />} />
+            
+            {/* New Routes & Redirects */}
+            <Route path="/my-requests" element={<Navigate to="/borrowing" />} />
+            <Route path="/my-lending" element={<Navigate to="/lending" />} />
+            <Route path="/requests-board" element={<Navigate to="/board" />} />
+            
+            <Route path="/borrowing" element={<RequireUser user={true}><MyRequests /></RequireUser>} />
+            <Route path="/lending" element={<RequireUser user={true}><MyLending /></RequireUser>} />
+            <Route path="/board" element={<RequestsBoard />} />
+            <Route path="/profile" element={<RequireUser user={true}><Profile /></RequireUser>} />
             <Route path="/impact" element={<Impact />} />
-            <Route path="/requests-board" element={<RequestsBoard />} />
             <Route path="/create-account" element={<CreateAccount />} />
+            <Route path="/_kit" element={<Kit />} />
           </Routes>
         </main>
 
