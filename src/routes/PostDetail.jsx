@@ -1,8 +1,36 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../context/CurrentUserContext';
-import RatingStars from '../components/RatingStars';
 import { request } from '../api/client';
+import Button from '../components/ui/Button';
+import AgreementModal from '../components/AgreementModal';
+
+function Gallery({ photos }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  if (!photos || photos.length === 0) {
+    return (
+      <div className="w-full aspect-[4/3] bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-700">
+        <span className="text-slate-400">No Photos Available</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="w-full aspect-[4/3] bg-slate-100 dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
+        <img src={photos[activeIdx].url} alt="Item" className="w-full h-full object-contain" />
+      </div>
+      {photos.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {photos.map((p, idx) => (
+            <button key={p.id || idx} onClick={() => setActiveIdx(idx)} className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${idx === activeIdx ? 'border-orange-500' : 'border-transparent hover:border-slate-300'}`}>
+              <img src={p.url} alt="Thumbnail" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -12,15 +40,12 @@ export default function PostDetail() {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  // Quote logic
   const [startAt, setStartAt] = useState('');
   const [endAt, setEndAt] = useState('');
   const [quote, setQuote] = useState(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
-  const [agreementAccepted, setAgreementAccepted] = useState(false);
   
-  // UI logic
-  const [successMsg, setSuccessMsg] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -37,12 +62,29 @@ export default function PostDetail() {
   }, [id]);
 
   const handleGetQuote = async () => {
+    if (isGuest) {
+      promptSignIn('Sign in to request this item');
+      return;
+    }
     if (!startAt || !endAt) return;
+    
+    // Validate dates
+    const sDate = new Date(startAt);
+    const eDate = new Date(endAt);
+    if (eDate <= sDate) {
+      alert("End date must be after start date.");
+      return;
+    }
+    if (sDate < new Date()) {
+      alert("Start date cannot be in the past.");
+      return;
+    }
+
     setQuoteLoading(true);
     try {
       const q = await request('GET', `/posts/${id}/quote`, { query: { start: startAt + ':00Z', end: endAt + ':00Z' }});
       setQuote(q);
-      setAgreementAccepted(false);
+      setModalOpen(true);
     } catch(err) {
       alert("Error getting quote: " + err.message);
     } finally {
@@ -50,116 +92,102 @@ export default function PostDetail() {
     }
   };
 
-  const handleSubmitRequest = async () => {
-    if (isGuest) {
-      promptSignIn('Sign in to request this item');
-      return;
-    }
-    if (!agreementAccepted) {
-      alert("Please accept the agreement.");
-      return;
-    }
-    
+  const handleAcceptRequest = async () => {
     try {
       await request('POST', `/posts/${id}/requests`, {
         body: { start: startAt + ':00Z', end: endAt + ':00Z', agreementAccepted: true }
       });
-      setSuccessMsg('Request submitted successfully!');
-      setTimeout(() => navigate('/my-requests'), 2000);
+      setModalOpen(false);
+      navigate('/borrowing');
     } catch(err) {
       alert(err.message);
     }
   };
 
-  if (loading) return <div className="p-4">Loading...</div>;
-  if (!post) return <div className="p-4 text-red-500">Post not found.</div>;
+  if (loading) return <div className="p-12 text-center text-slate-500">Loading item details...</div>;
+  if (!post) return <div className="p-12 text-center text-red-500">Item not found.</div>;
 
   const isOwner = currentUserId === post.owner?.id;
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6">
-      {successMsg && <div className="bg-green-100 text-green-800 p-3 rounded">{successMsg}</div>}
-      
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="md:w-1/2 flex flex-col gap-4">
-          <div className="bg-slate-200 aspect-video rounded-xl overflow-hidden flex items-center justify-center">
-             <span className="text-slate-400">No Photo</span>
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold">{post.title}</h1>
-            <p className="text-orange-600 font-semibold text-xl">₹{post.rate} / {post.rateUnit}</p>
-          </div>
+    <div className="max-w-6xl mx-auto py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        {/* Left Column: Gallery & Details */}
+        <div className="lg:col-span-2 space-y-8">
+          <Gallery photos={post.photos} />
           
-          <div className="bg-white p-4 rounded shadow-sm border">
-            <h3 className="font-semibold mb-2">Details</h3>
-            <ul className="text-sm space-y-1">
-              <li><strong>Item:</strong> {post.itemName}</li>
-              <li><strong>Condition:</strong> {post.itemCondition}</li>
-              <li><strong>Accessories:</strong> {post.accessories}</li>
-              <li><strong>Deposit:</strong> ₹{post.securityDeposit}</li>
-            </ul>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-slate-100">Item Specifications</h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-slate-500 dark:text-slate-400">Category</p>
+                <p className="font-medium text-slate-900 dark:text-slate-100">{post.category || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-slate-500 dark:text-slate-400">Condition</p>
+                <p className="font-medium text-slate-900 dark:text-slate-100">{post.itemCondition}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-slate-500 dark:text-slate-400">Accessories Included</p>
+                <p className="font-medium text-slate-900 dark:text-slate-100">{post.accessories || 'None'}</p>
+              </div>
+              <div className="col-span-2 mt-2">
+                <p className="text-slate-500 dark:text-slate-400">Description</p>
+                <p className="mt-1 text-slate-700 dark:text-slate-300 leading-relaxed">{post.description || 'No description provided.'}</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="md:w-1/2 flex flex-col gap-4">
-          <div className="bg-white p-4 rounded shadow-sm border">
-            <h3 className="font-semibold mb-2">Request this item</h3>
-            {!isOwner ? (
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">Start Date & Time</label>
-                  <input type="datetime-local" className="border p-2 rounded" value={startAt} onChange={e=>setStartAt(e.target.value)} />
-                  <label className="text-sm font-medium">End Date & Time</label>
-                  <input type="datetime-local" className="border p-2 rounded" value={endAt} onChange={e=>setEndAt(e.target.value)} />
-                  <button onClick={handleGetQuote} disabled={!startAt || !endAt || quoteLoading} className="bg-slate-800 text-white p-2 rounded mt-2 hover:bg-slate-700 disabled:opacity-50">
-                    Get Quote
-                  </button>
+        {/* Right Column: Action Panel */}
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 sticky top-24">
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mb-2">{post.title}</h1>
+            <div className="flex items-baseline gap-2 mb-6 border-b border-slate-100 dark:border-slate-700 pb-6">
+              <span className="text-3xl font-black text-orange-600 dark:text-orange-500">₹{post.rate}</span>
+              <span className="text-slate-500 font-medium">/ {post.rateUnit}</span>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-200">Select Dates</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Pick-up</label>
+                  <input type="datetime-local" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none" value={startAt} onChange={e=>setStartAt(e.target.value)} />
                 </div>
-
-                {quote && (
-                  <div className="border-t pt-4 mt-4">
-                    <h4 className="font-bold mb-2">Quote Summary</h4>
-                    <div className="flex justify-between text-sm"><span>Borrowing Charge</span><span>₹{quote.borrowingCharge}</span></div>
-                    <div className="flex justify-between text-sm"><span>Platform Fee</span><span>₹{quote.platformFee}</span></div>
-                    <div className="flex justify-between text-sm"><span>Refundable Deposit</span><span>₹{quote.securityDeposit}</span></div>
-                    <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Total to Pay</span><span>₹{quote.transactionAmount}</span></div>
-                    
-                    <div className="mt-4 p-3 bg-stone-100 rounded text-xs space-y-2">
-                      <p className="font-semibold">Agreement</p>
-                      <p>I agree to return <b>{quote.agreement?.resource}</b> on time. I accept responsibility for late fees and damages.</p>
-                      <label className="flex items-center gap-2 mt-2">
-                        <input type="checkbox" checked={agreementAccepted} onChange={e=>setAgreementAccepted(e.target.checked)} />
-                        <span>I accept the agreement terms</span>
-                      </label>
-                    </div>
-
-                    <button onClick={handleSubmitRequest} disabled={!agreementAccepted} className="w-full bg-orange-600 text-white p-2 rounded mt-4 hover:bg-orange-700 disabled:opacity-50">
-                      Submit Request
-                    </button>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Return</label>
+                  <input type="datetime-local" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none" value={endAt} onChange={e=>setEndAt(e.target.value)} />
+                </div>
               </div>
+            </div>
+
+            {!isOwner ? (
+              <Button onClick={handleGetQuote} disabled={!startAt || !endAt || quoteLoading} className="w-full bg-orange-600 text-white font-bold py-3 rounded-xl shadow-sm hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                {quoteLoading ? 'Calculating...' : 'Request Item'}
+              </Button>
             ) : (
-              <p className="text-sm text-slate-500">You own this item. Check your requests dashboard for inquiries.</p>
+              <div className="text-center p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 font-medium text-sm">
+                You own this listing
+              </div>
             )}
-          </div>
-          
-          <div className="bg-white p-4 rounded shadow-sm border">
-             <h3 className="font-semibold mb-2">Owner</h3>
-             {post.owner && (
-               <div className="flex items-center gap-2">
-                 <div className="w-10 h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold">
-                   {post.owner.name.charAt(0)}
-                 </div>
-                 <div>
-                   <p className="font-medium">{post.owner.name}</p>
-                   <p className="text-xs text-slate-500">{post.owner.department}</p>
-                 </div>
-               </div>
-             )}
+            
+            <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center font-bold text-lg">
+                  {post.owner?.name?.charAt(0) || '?'}
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{post.owner?.name}</p>
+                  <p className="text-xs text-slate-500">{post.owner?.department || 'Member'}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+      
+      <AgreementModal isOpen={modalOpen} onClose={() => setModalOpen(false)} quote={quote} onAccept={handleAcceptRequest} />
     </div>
   );
 }

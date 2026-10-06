@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-do
 import { CurrentUserProvider, useCurrentUser } from './context/CurrentUserContext';
 import UserSwitcher from './components/UserSwitcher';
 import SearchBar from './components/SearchBar';
-import CreatePostModal from './components/CreatePostModal';
+// import CreatePostModal removed
 import { request } from './api/client';
 
 // Route components
@@ -11,6 +11,7 @@ import Home from './routes/Home';
 import Browse from './routes/Browse';
 import PostDetail from './routes/PostDetail';
 import CreatePost from './routes/CreatePost';
+import NeedDiscovery from './routes/NeedDiscovery';
 import MyRequests from './routes/MyRequests';
 import MyLending from './routes/MyLending';
 import Admin from './routes/Admin';
@@ -49,10 +50,13 @@ function TopBar({ onSearch, darkTheme, onToggleTheme }) {
   );
 }
 
+// Removed CreatePostModal
+import { useNavigate } from 'react-router-dom';
+
 function FloatingCreateButton() {
   const { isGuest, promptSignIn } = useCurrentUser();
-  const [modalOpen, setModalOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const hiddenPaths = ['/create', '/my-requests', '/my-lending', '/admin', '/profile', '/requests-board'];
   const shouldHide = hiddenPaths.some((p) => location.pathname.startsWith(p));
@@ -63,21 +67,19 @@ function FloatingCreateButton() {
       promptSignIn('Sign in to list an item for lending');
       return;
     }
-    setModalOpen(true);
+    navigate('/create');
   };
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={handleClick}
-        title="Create New Listing"
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-2xl text-white shadow-lg hover:bg-orange-700 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-orange-300"
-      >+</button>
-      <CreatePostModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onPostCreated={() => window.dispatchEvent(new CustomEvent('postCreated'))} />
-    </>
+    <button
+      type="button"
+      onClick={handleClick}
+      title="Create New Listing"
+      className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-2xl text-white shadow-lg hover:bg-orange-700 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-orange-300"
+    >+</button>
   );
 }
+
 
 const SearchContext = React.createContext({ query: '', setQuery: () => {} });
 export const useSearchContext = () => React.useContext(SearchContext);
@@ -131,6 +133,7 @@ function AppInner() {
             <Route path="/browse" element={<Browse />} />
             <Route path="/post/:id" element={<PostDetail />} />
             <Route path="/create" element={<CreatePost />} />
+            <Route path="/need" element={<NeedDiscovery />} />
             
             {/* New Routes & Redirects */}
             <Route path="/my-requests" element={<Navigate to="/borrowing" />} />
