@@ -15,9 +15,20 @@ public class GlobalExceptionHandler {
         return buildError("VALIDATION", e.getMessage(), HttpStatus.BAD_REQUEST);
     }
     
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<?> handleApi(ApiException e) {
+        return buildError(e.getCode(), e.getMessage(), e.getStatus());
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<?> handleState(IllegalStateException e) {
         return buildError("INVALID_STATE", e.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<?> handleResponseStatus(org.springframework.web.server.ResponseStatusException e) {
+        HttpStatus status = HttpStatus.resolve(e.getStatusCode().value());
+        return buildError(status != null ? status.name() : "ERROR", e.getReason() != null ? e.getReason() : e.getMessage(), status != null ? status : HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(Exception.class)

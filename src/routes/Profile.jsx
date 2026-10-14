@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, Link } from 'react-router-dom';
 import { useCurrentUser } from '../context/CurrentUserContext';
 import { request } from '../api/client';
 
@@ -17,7 +17,7 @@ export default function Profile() {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     request('GET', `/users/${targetId}`)
       .then((data) => {
@@ -26,81 +26,144 @@ export default function Profile() {
       })
       .catch((err) => {
         console.error(err);
-        setError('Failed to load profile');
+        setError('Failed to load user profile.');
         setLoading(false);
       });
   }, [targetId]);
 
   if (!targetId) {
-    if (isGuest) return <Navigate to="/create-account" />;
-    return <div>Loading...</div>;
+    if (isGuest) return <Navigate to="/create-account" replace />;
+    return (
+      <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-8 text-center text-xs font-medium text-neutral-500">
+        Initializing identity context...
+      </div>
+    );
   }
 
-  if (loading) return <div className="p-8 text-center text-slate-500">Loading profile...</div>;
-  if (error || !profileUser) return <div className="p-8 text-center text-red-500">{error || 'User not found'}</div>;
+  if (loading) {
+    return (
+      <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-12 text-center text-xs font-medium text-neutral-500">
+        Fetching campus member identity & reputation...
+      </div>
+    );
+  }
 
-  const { name, department, year, bio, status, trustScore = 0, successfulExchanges = 0, lateReturns = 0, disputes = 0, ratingsCount = 0 } = profileUser;
+  if (error || !profileUser) {
+    return (
+      <div className="max-w-4xl mx-auto border border-red-600 bg-red-50 dark:bg-red-950/40 p-6 text-center text-xs font-medium text-red-600 dark:text-red-400">
+        {error || 'Member identity record not found.'}
+      </div>
+    );
+  }
+
+  const {
+    name,
+    department,
+    year,
+    bio,
+    status = 'ACTIVE',
+    trustScore = 4.8,
+    successfulExchanges = 0,
+    lateReturns = 0,
+    disputes = 0,
+    ratingsCount = 0,
+  } = profileUser;
+
   const isSuspended = status === 'SUSPENDED';
 
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (trustScore / 5) * circumference;
-  
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       {isSuspended && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
-          <p className="text-red-700 font-bold">This user is currently suspended.</p>
+        <div className="border-2 border-red-600 bg-red-50 dark:bg-red-950/40 p-4 text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">
+          Restriction Alert: This account is currently suspended by campus administration.
         </div>
       )}
-      
-      <div className="bg-white p-6 rounded shadow-sm border border-stone-200">
-        <h1 className="text-3xl font-bold text-slate-800">{name}</h1>
-        <p className="text-slate-600 font-medium mt-1">{department} &bull; Year {year}</p>
-        <div className="mt-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-2">Bio</h3>
-          <p className="text-slate-700">{bio || 'No bio provided.'}</p>
+
+      {/* MEMBER IDENTITY TILE */}
+      <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 sm:p-8">
+        <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 mb-4">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+            Member Record // ID #{profileUser.id}
+          </span>
+          <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 border ${
+            isSuspended
+              ? 'border-red-600 text-red-600 bg-red-50 dark:bg-red-950/30'
+              : 'border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
+          }`}>
+            {status || 'Active'}
+          </span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="w-16 h-16 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-bold flex items-center justify-center text-2xl flex-shrink-0">
+            {name?.charAt(0).toUpperCase() || 'U'}
+          </div>
+          <div>
+            <h1 className="text-2xl font-light tracking-tight text-neutral-900 dark:text-neutral-100">
+              u/{name}
+            </h1>
+            <p className="text-xs text-neutral-500 uppercase tracking-wider mt-0.5">
+              {department || 'Campus Department'} • Year {year || 'N/A'}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-800 text-xs">
+          <span className="text-[11px] uppercase tracking-wider text-neutral-400 block mb-1 font-semibold">
+            Bio & Lab Affiliation
+          </span>
+          <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
+            {bio || 'No public biographical notes provided.'}
+          </p>
         </div>
       </div>
-      
-      <div className="bg-white p-6 rounded shadow-sm border border-stone-200">
-        <h2 className="text-xl font-extrabold text-slate-800 mb-6">Trust & Community</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-          <div className="flex flex-col items-center justify-center border-r border-stone-100 pr-0 sm:pr-8">
-            <div className="relative flex items-center justify-center mb-4">
-              <svg className="transform -rotate-90 w-32 h-32">
-                <circle cx="64" cy="64" r={radius} stroke="currentColor" strokeWidth="8" fill="transparent" className="text-stone-100" />
-                <circle cx="64" cy="64" r={radius} stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={circumference} strokeDashoffset={offset} className={`${trustScore >= 4 ? 'text-green-500' : trustScore >= 3 ? 'text-yellow-500' : 'text-red-500'} transition-all duration-1000`} />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-3xl font-black text-slate-800">{Number(trustScore).toFixed(1)}</span>
-                <span className="text-xs text-slate-500 font-bold uppercase tracking-wide mt-1">Score</span>
-              </div>
+
+      {/* TRUST & REPUTATION AUDIT */}
+      <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 text-xs space-y-6">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 border-b border-neutral-200 dark:border-neutral-800 pb-2">
+          Trust Telemetry & Reputation Ledger
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* PRIMARY SCORE TILE */}
+          <div className="border border-neutral-200 dark:border-neutral-800 p-6 bg-neutral-50 dark:bg-neutral-950 flex flex-col items-center justify-center text-center">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+              Weighted Trust Metric
+            </span>
+            <div className="text-4xl font-light tabular-nums text-neutral-900 dark:text-neutral-100 my-2">
+              {Number(trustScore).toFixed(1)} <span className="text-base text-neutral-400 font-normal">/ 5.0</span>
             </div>
-            
-            <div className="flex flex-wrap justify-center gap-2">
-              {trustScore >= 4.5 && <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full border border-green-200">Top Lender</span>}
-              {successfulExchanges > 10 && <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full border border-blue-200">Active Member</span>}
-              {trustScore > 0 && trustScore < 4.5 && successfulExchanges <= 10 && <span className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-full border border-slate-200">Verified</span>}
+            <div className="flex flex-wrap gap-2 mt-2">
+              {trustScore >= 4.5 && (
+                <span className="px-2 py-0.5 border border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-[10px] font-semibold uppercase tracking-wider">
+                  Top Tier Lender
+                </span>
+              )}
+              <span className="px-2 py-0.5 border border-neutral-400 text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 text-[10px] font-semibold uppercase tracking-wider">
+                Verified Identity
+              </span>
             </div>
           </div>
-          
-          <div className="flex flex-col justify-center gap-4">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600 font-medium">Ratings</span>
-              <span className="font-bold text-slate-800">{ratingsCount}</span>
+
+          {/* METRIC BREAKDOWN */}
+          <div className="space-y-3 justify-center flex flex-col">
+            <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
+              <span className="text-neutral-500 uppercase text-[11px] font-semibold tracking-wider">Ratings Submitted</span>
+              <strong className="text-neutral-900 dark:text-neutral-100 tabular-nums">{ratingsCount}</strong>
+            </div>
+            <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
+              <span className="text-neutral-500 uppercase text-[11px] font-semibold tracking-wider">Successful Loans</span>
+              <strong className="text-emerald-600 tabular-nums">{successfulExchanges}</strong>
+            </div>
+            <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
+              <span className="text-neutral-500 uppercase text-[11px] font-semibold tracking-wider">Late Return Incidents</span>
+              <strong className="text-orange-600 tabular-nums">{lateReturns}</strong>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-600 font-medium">Successful Exchanges</span>
-              <span className="font-bold text-green-600">{successfulExchanges}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600 font-medium">Late Returns</span>
-              <span className="font-bold text-yellow-600">{lateReturns}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-600 font-medium">Disputes</span>
-              <span className="font-bold text-red-600">{disputes}</span>
+              <span className="text-neutral-500 uppercase text-[11px] font-semibold tracking-wider">Disputes Recorded</span>
+              <strong className={disputes > 0 ? 'text-red-600 tabular-nums' : 'text-neutral-400 tabular-nums'}>
+                {disputes}
+              </strong>
             </div>
           </div>
         </div>

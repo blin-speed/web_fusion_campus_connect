@@ -1,4 +1,4 @@
-﻿import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { request } from '../api/client.js';
 import { getUserToken, setUserToken } from '../api/auth.js';
 import { adaptUser } from '../api/adapters.js';
@@ -57,16 +57,20 @@ export function CurrentUserProvider({ children }) {
     }
   }, [currentUserId, refreshCurrentUser]);
 
-  const login = async (userId) => {
+  const login = async (credentials) => {
     try {
-      const res = await request('POST', '/auth/login', { body: { userId } });
+      const body = typeof credentials === 'object' && credentials !== null
+        ? credentials
+        : { userId: credentials };
+      const res = await request('POST', '/auth/login', { body });
       setUserToken(res.token);
       setCurrentUserId(res.user.id);
       setCurrentUser(adaptUser(res.user));
       setAuthPromptOpen(false);
+      return adaptUser(res.user);
     } catch (err) {
       console.error('Login failed:', err);
-      alert('Login failed: ' + err.message);
+      throw err;
     }
   };
 
@@ -83,7 +87,15 @@ export function CurrentUserProvider({ children }) {
 
   const addNewUser = async (data) => {
     try {
-      const res = await request('POST', '/auth/register', { body: data });
+      const payload = {
+        name: data.username || data.name,
+        username: data.username || data.name,
+        password: data.password,
+        department: data.department || '',
+        year: data.year || '',
+        bio: data.bio || '',
+      };
+      const res = await request('POST', '/auth/register', { body: payload });
       setUserToken(res.token);
       await refreshUsers();
       setCurrentUserId(res.user.id);
@@ -92,7 +104,7 @@ export function CurrentUserProvider({ children }) {
       return adaptUser(res.user);
     } catch (err) {
       console.error('Registration failed:', err);
-      alert('Registration failed: ' + err.message);
+      throw err;
     }
   };
 
@@ -143,4 +155,3 @@ export function useCurrentUser() {
 }
 
 export default CurrentUserContext;
-

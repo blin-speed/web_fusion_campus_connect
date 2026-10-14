@@ -1,5 +1,5 @@
-﻿import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function PostCard({ post }) {
   const navigate = useNavigate();
@@ -13,22 +13,15 @@ export default function PostCard({ post }) {
     owner,
     description,
     rate,
-    rateUnit,
+    rateUnit = 'day',
     securityDeposit,
     location,
   } = post;
 
   const ownerName = owner?.name || 'Campus Member';
   const locationName = location?.name || 'Campus Library';
-  const categoryName = post.category?.name || 'Category';
-
-  const statusColors = {
-    available: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    reserved: 'bg-amber-50 text-amber-800 border-amber-300',
-    lent: 'bg-slate-100 text-slate-700 border-slate-300',
-  };
-
-  const badgeColor = statusColors[availability] || 'bg-slate-100 text-slate-700 border-slate-300';
+  const categoryName = post.category?.name || (typeof post.category === 'string' ? post.category : 'Hardware');
+  const isAvail = availability === 'available' || post.status === 'available';
 
   const handleClick = (e) => {
     e.preventDefault();
@@ -38,46 +31,52 @@ export default function PostCard({ post }) {
   return (
     <div
       onClick={handleClick}
-      className="flex flex-col justify-between rounded-xl border border-stone-200 bg-white p-4 shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-orange-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-orange-500"
+      className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 text-xs cursor-pointer hover:border-neutral-400 dark:hover:border-neutral-700 transition-colors flex flex-col justify-between"
     >
       <div>
         <div className="flex items-start justify-between gap-2 mb-2">
-          <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-slate-700 border border-stone-200/60 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600">
+          <span className="font-semibold text-[10px] uppercase tracking-wider text-neutral-500 border border-neutral-200 dark:border-neutral-800 px-1.5 py-0.5">
             {categoryName}
           </span>
-          <span className={`rounded border px-2 py-0.5 text-xs font-semibold capitalize ${badgeColor}`}>
-            {availability}
+          <span className={`px-2 py-0.5 border text-[10px] font-semibold uppercase tracking-wider ${
+            isAvail
+              ? 'border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
+              : 'border-neutral-400 text-neutral-400 bg-neutral-100 dark:bg-neutral-800'
+          }`}>
+            {isAvail ? 'Available' : 'Reserved'}
           </span>
         </div>
-        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1 hover:text-orange-600 transition-colors">
+
+        <h3 className="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 hover:text-orange-600 transition-colors mb-1">
           {title}
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Item: <span className="font-medium text-slate-700 dark:text-slate-300">{itemName}</span></p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 truncate">
-          {locationName}
+        {itemName && (
+          <p className="text-[11px] text-neutral-400 mb-1">Model: {itemName}</p>
+        )}
+        <p className="text-[11px] text-neutral-400 mb-2 truncate">Location: {locationName}</p>
+        <p className="text-xs text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-3 leading-relaxed">
+          {description || 'No detailed specifications provided.'}
         </p>
-        <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">{description}</p>
 
-        <div className="mt-3 flex items-center gap-3 text-xs bg-stone-50 p-2 rounded-lg border border-stone-200/80 dark:bg-slate-900/50 dark:border-slate-700">
+        <div className="flex items-center gap-3 bg-neutral-50 dark:bg-neutral-950 p-2.5 border border-neutral-200 dark:border-neutral-800 text-xs">
           <div>
-            <span className="text-slate-500 dark:text-slate-400">Rate: </span>
-            <strong className="text-slate-900 dark:text-slate-100 font-bold">â‚¹{rate}/{rateUnit}</strong>
+            <span className="text-neutral-400 uppercase text-[9px] font-semibold tracking-wider block">Rate</span>
+            <strong className="text-orange-600 font-semibold tabular-nums">₹{rate}/{rateUnit}</strong>
           </div>
-          <div className="text-stone-300 dark:text-slate-600">|</div>
+          <div className="text-neutral-300 dark:text-neutral-700">|</div>
           <div>
-            <span className="text-slate-500 dark:text-slate-400">Deposit: </span>
-            <strong className="text-slate-900 dark:text-slate-100 font-bold">â‚¹{securityDeposit}</strong>
+            <span className="text-neutral-400 uppercase text-[9px] font-semibold tracking-wider block">Escrow Deposit</span>
+            <strong className="text-neutral-900 dark:text-neutral-100 font-semibold tabular-nums">₹{securityDeposit || 0}</strong>
           </div>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-stone-100 dark:border-slate-700 pt-3 text-xs text-slate-500 dark:text-slate-400">
-        <span>Owner: <strong className="text-slate-800 dark:text-slate-200">{ownerName}</strong></span>
-        <span className="font-bold text-orange-600 hover:text-orange-700">
-          View Details â†’
+      <div className="mt-4 flex items-center justify-between border-t border-neutral-200 dark:border-neutral-800 pt-2 text-[11px] text-neutral-400">
+        <span>u/{ownerName}</span>
+        <span className="font-semibold uppercase tracking-wide text-orange-600 hover:underline">
+          View Details →
         </span>
       </div>
     </div>
   );
 }
-

@@ -2,6 +2,7 @@ package com.campuscircular.backend.entity;
 import jakarta.persistence.*;
 import java.time.Instant;
 @Entity @Table(name = "requests")
+@com.fasterxml.jackson.annotation.JsonPropertyOrder({ "id", "status", "post", "borrower" })
 public class Request {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne @JoinColumn(name = "post_id") private Post post;

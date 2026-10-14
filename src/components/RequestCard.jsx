@@ -17,48 +17,46 @@ export default function RequestCard({ request, onAccept, onReject }) {
   };
 
   const statusColors = {
-    pending: 'bg-amber-50 text-amber-800 border-amber-300',
-    accepted: 'bg-orange-50 text-orange-700 border-orange-200',
-    closed_auto: 'bg-stone-100 text-slate-500 border-stone-200',
-    rejected: 'bg-stone-100 text-slate-600 border-stone-200',
+    pending: 'border-orange-600 text-orange-600 bg-orange-50 dark:bg-orange-950/30',
+    accepted: 'border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30',
+    closed_auto: 'border-neutral-400 text-neutral-400 bg-neutral-100 dark:bg-neutral-800',
+    rejected: 'border-red-600 text-red-600 bg-red-50 dark:bg-red-950/30',
   };
 
   const statusDisplay = {
-    pending: 'Pending',
+    pending: 'Pending Approval',
     accepted: 'Accepted',
-    closed_auto: 'Auto-closed',
+    closed_auto: 'Auto-Closed',
     rejected: 'Rejected',
   };
 
   const isPending = status === 'pending';
 
   return (
-    <div className="flex flex-col justify-between rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+    <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 text-xs flex flex-col justify-between">
       <div>
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <span className="text-xs text-slate-500">
-            {createdAt ? new Date(createdAt).toLocaleDateString() : ''}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-[11px] text-neutral-400">
+            {createdAt ? new Date(createdAt).toLocaleDateString() : 'Today'}
           </span>
-          <span
-            className={`rounded border px-2 py-0.5 text-xs font-bold capitalize ${
-              statusColors[status] || 'bg-stone-100 text-slate-700 border-stone-200'
-            }`}
-          >
-            {statusDisplay[status] || status}
+          <span className={`px-2 py-0.5 border text-[10px] font-semibold uppercase tracking-wider ${statusColors[status] || 'border-neutral-400 text-neutral-400'}`}>
+            {statusDisplay[status] || status?.toUpperCase()}
           </span>
         </div>
-        <h4 className="text-sm font-bold text-slate-800 font-heading">{postTitle}</h4>
-        <p className="text-xs text-slate-600 mt-1">
-          Requested by: <strong className="text-slate-800">{borrowerName}</strong>
+        <h4 className="font-semibold text-sm text-neutral-900 dark:text-neutral-100">
+          {postTitle}
+        </h4>
+        <p className="text-[11px] text-neutral-500 mt-1">
+          Borrower: <strong className="text-neutral-900 dark:text-neutral-100 font-semibold">u/{borrowerName}</strong>
         </p>
       </div>
 
       {isPending ? (
-        <div className="mt-4 flex items-center gap-2 border-t border-stone-100 pt-3">
+        <div className="mt-4 flex items-center gap-2 border-t border-neutral-200 dark:border-neutral-800 pt-3">
           <button
             type="button"
             onClick={handleAccept}
-            className="flex-1 rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-orange-700 active:scale-95 transition-all focus:outline-none"
+            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-1.5 font-semibold uppercase tracking-wider text-xs transition-colors"
           >
             Accept Request
           </button>
@@ -66,15 +64,15 @@ export default function RequestCard({ request, onAccept, onReject }) {
             <button
               type="button"
               onClick={handleReject}
-              className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-stone-50 focus:outline-none"
+              className="border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs transition-colors"
             >
               Reject
             </button>
           )}
         </div>
       ) : (
-        <div className="mt-4 border-t border-stone-100 pt-2 text-xs text-slate-500 italic">
-          Status: {statusDisplay[status] || status}
+        <div className="mt-4 border-t border-neutral-200 dark:border-neutral-800 pt-2 text-[11px] text-neutral-400 uppercase font-semibold">
+          Protocol Status: {statusDisplay[status] || status}
         </div>
       )}
     </div>

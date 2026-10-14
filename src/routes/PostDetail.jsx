@@ -1,28 +1,42 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCurrentUser } from '../context/CurrentUserContext';
 import { request } from '../api/client';
-import Button from '../components/ui/Button';
 import AgreementModal from '../components/AgreementModal';
 
 function Gallery({ photos }) {
   const [activeIdx, setActiveIdx] = useState(0);
   if (!photos || photos.length === 0) {
     return (
-      <div className="w-full aspect-[4/3] bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-700">
-        <span className="text-slate-400">No Photos Available</span>
+      <div className="w-full aspect-[4/3] bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center border border-neutral-300 dark:border-neutral-800">
+        <span className="text-xs uppercase tracking-wider font-semibold text-neutral-400">
+          No Photos Uploaded
+        </span>
       </div>
     );
   }
   return (
-    <div className="flex flex-col gap-4">
-      <div className="w-full aspect-[4/3] bg-slate-100 dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
-        <img src={photos[activeIdx].url} alt="Item" className="w-full h-full object-contain" />
+    <div className="flex flex-col gap-3">
+      <div className="w-full aspect-[4/3] bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 overflow-hidden flex items-center justify-center">
+        <img
+          src={photos[activeIdx]?.url}
+          alt="Resource view"
+          className="w-full h-full object-contain"
+        />
       </div>
       {photos.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {photos.map((p, idx) => (
-            <button key={p.id || idx} onClick={() => setActiveIdx(idx)} className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${idx === activeIdx ? 'border-orange-500' : 'border-transparent hover:border-slate-300'}`}>
+            <button
+              key={p.id || idx}
+              type="button"
+              onClick={() => setActiveIdx(idx)}
+              className={`flex-shrink-0 w-16 h-16 border-2 transition-colors overflow-hidden ${
+                idx === activeIdx
+                  ? 'border-orange-600'
+                  : 'border-neutral-300 dark:border-neutral-700 hover:border-neutral-400'
+              }`}
+            >
               <img src={p.url} alt="Thumbnail" className="w-full h-full object-cover" />
             </button>
           ))}
@@ -32,20 +46,43 @@ function Gallery({ photos }) {
   );
 }
 
+// Helper to format ISO local datetime string (YYYY-MM-DDTHH:mm)
+function formatLocalDateTime(d) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 export default function PostDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { currentUserId, isGuest, promptSignIn } = useCurrentUser();
+  const { currentUserId, isGuest } = useCurrentUser();
 
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  const [startAt, setStartAt] = useState('');
-  const [endAt, setEndAt] = useState('');
+
+  // Pre-fill tomorrow 09:00 and day after tomorrow 17:00
+  const [startAt, setStartAt] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    return formatLocalDateTime(tomorrow);
+  });
+  const [endAt, setEndAt] = useState(() => {
+    const dayAfter = new Date();
+    dayAfter.setDate(dayAfter.getDate() + 2);
+    dayAfter.setHours(17, 0, 0, 0);
+    return formatLocalDateTime(dayAfter);
+  });
+
   const [quote, setQuote] = useState(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
-  
   const [modalOpen, setModalOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -63,30 +100,31 @@ export default function PostDetail() {
 
   const handleGetQuote = async () => {
     if (isGuest) {
-      promptSignIn('Sign in to request this item');
+      navigate('/login', { state: { from: { pathname: `/post/${id}` } } });
       return;
     }
-    if (!startAt || !endAt) return;
-    
-    // Validate dates
-    const sDate = new Date(startAt);
-    const eDate = new Date(endAt);
-    if (eDate <= sDate) {
-      alert("End date must be after start date.");
-      return;
-    }
-    if (sDate < new Date()) {
-      alert("Start date cannot be in the past.");
+    if (!startAt || !endAt) {
+      setErrorMsg('Please select both pick-up and return dates.');
       return;
     }
 
+    const sDate = new Date(startAt);
+    const eDate = new Date(endAt);
+    if (eDate <= sDate) {
+      setErrorMsg('Return date must be after pick-up date.');
+      return;
+    }
+
+    setErrorMsg('');
     setQuoteLoading(true);
     try {
-      const q = await request('GET', `/posts/${id}/quote`, { query: { start: startAt + ':00Z', end: endAt + ':00Z' }});
+      const q = await request('GET', `/posts/${id}/quote`, {
+        query: { start: startAt + ':00Z', end: endAt + ':00Z' },
+      });
       setQuote(q);
       setModalOpen(true);
-    } catch(err) {
-      alert("Error getting quote: " + err.message);
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to calculate quote.');
     } finally {
       setQuoteLoading(false);
     }
@@ -95,99 +133,201 @@ export default function PostDetail() {
   const handleAcceptRequest = async () => {
     try {
       await request('POST', `/posts/${id}/requests`, {
-        body: { start: startAt + ':00Z', end: endAt + ':00Z', agreementAccepted: true }
+        body: { start: startAt + ':00Z', end: endAt + ':00Z', agreementAccepted: true },
       });
       setModalOpen(false);
       navigate('/borrowing');
-    } catch(err) {
-      alert(err.message);
+    } catch (err) {
+      setErrorMsg(err.message || 'Request submission failed.');
+      setModalOpen(false);
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-slate-500">Loading item details...</div>;
-  if (!post) return <div className="p-12 text-center text-red-500">Item not found.</div>;
+  if (loading) {
+    return (
+      <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-12 text-center text-xs font-medium text-neutral-500">
+        Loading resource specifications...
+      </div>
+    );
+  }
 
-  const isOwner = currentUserId === post.owner?.id;
+  if (!post) {
+    return (
+      <div className="border border-red-600 bg-red-50 dark:bg-red-950/40 p-8 text-center text-xs font-medium text-red-600 dark:text-red-400">
+        Resource not found or has been decommissioned.
+      </div>
+    );
+  }
+
+  const isOwner = currentUserId && post.owner?.id && currentUserId === post.owner.id;
+  const categoryName = post.category?.name || (typeof post.category === 'string' ? post.category : 'Lab Equipment');
+  const accessoriesText = Array.isArray(post.accessories)
+    ? post.accessories.join(', ')
+    : typeof post.accessories === 'string' && post.accessories.trim()
+    ? post.accessories
+    : 'None specified';
+  const rate = post.rate != null ? post.rate : (post.price || 0);
+  const rateUnit = (post.rateUnit || 'day').toLowerCase();
+  const deposit = post.securityDeposit != null ? post.securityDeposit : (post.deposit || 0);
+  const isAvailable = post.availability === 'available' || post.status === 'available';
 
   return (
-    <div className="max-w-6xl mx-auto py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* Left Column: Gallery & Details */}
-        <div className="lg:col-span-2 space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* BREADCRUMB */}
+      <div className="flex items-center gap-2 text-xs text-neutral-500">
+        <Link to="/" className="hover:text-orange-600 uppercase tracking-wide font-medium">Home</Link>
+        <span>/</span>
+        <Link to="/browse" className="hover:text-orange-600 uppercase tracking-wide font-medium">Inventory</Link>
+        <span>/</span>
+        <span className="text-neutral-900 dark:text-neutral-100 font-semibold">{post.title}</span>
+      </div>
+
+      {errorMsg && (
+        <div className="border border-red-600 bg-red-50 dark:bg-red-950/40 p-3 text-xs text-red-600 dark:text-red-400 font-medium">
+          Alert: {errorMsg}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* LEFT COLUMN: GALLERY & SPECIFICATIONS */}
+        <div className="lg:col-span-7 space-y-6">
           <Gallery photos={post.photos} />
-          
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-            <h2 className="text-2xl font-bold mb-4 text-slate-900 dark:text-slate-100">Item Specifications</h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+
+          {/* ITEM SPECIFICATIONS */}
+          <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
+            <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 mb-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                Hardware Specifications
+              </span>
+              <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 border ${
+                isAvailable
+                  ? 'border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
+                  : 'border-neutral-400 text-neutral-400 bg-neutral-100 dark:bg-neutral-800'
+              }`}>
+                {isAvailable ? 'Available' : 'Reserved'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <p className="text-slate-500 dark:text-slate-400">Category</p>
-                <p className="font-medium text-slate-900 dark:text-slate-100">{post.category || 'N/A'}</p>
+                <span className="text-neutral-400 block text-[11px] font-semibold uppercase tracking-wider">Category</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-100">{categoryName}</span>
               </div>
               <div>
-                <p className="text-slate-500 dark:text-slate-400">Condition</p>
-                <p className="font-medium text-slate-900 dark:text-slate-100">{post.itemCondition}</p>
+                <span className="text-neutral-400 block text-[11px] font-semibold uppercase tracking-wider">Condition Verification</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-100">{post.itemCondition || post.condition || 'Good'}</span>
               </div>
-              <div className="col-span-2">
-                <p className="text-slate-500 dark:text-slate-400">Accessories Included</p>
-                <p className="font-medium text-slate-900 dark:text-slate-100">{post.accessories || 'None'}</p>
+              <div className="sm:col-span-2">
+                <span className="text-neutral-400 block text-[11px] font-semibold uppercase tracking-wider">Accessories Included</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-100">{accessoriesText}</span>
               </div>
-              <div className="col-span-2 mt-2">
-                <p className="text-slate-500 dark:text-slate-400">Description</p>
-                <p className="mt-1 text-slate-700 dark:text-slate-300 leading-relaxed">{post.description || 'No description provided.'}</p>
+              <div className="sm:col-span-2 pt-2 border-t border-neutral-200 dark:border-neutral-800">
+                <span className="text-neutral-400 block text-[11px] font-semibold uppercase tracking-wider mb-1">Technical Description</span>
+                <p className="text-neutral-700 dark:text-neutral-300 text-xs leading-relaxed">
+                  {post.description || post.conditionSummary || 'No detailed description provided by owner.'}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Action Panel */}
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 sticky top-24">
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mb-2">{post.title}</h1>
-            <div className="flex items-baseline gap-2 mb-6 border-b border-slate-100 dark:border-slate-700 pb-6">
-              <span className="text-3xl font-black text-orange-600 dark:text-orange-500">₹{post.rate}</span>
-              <span className="text-slate-500 font-medium">/ {post.rateUnit}</span>
+        {/* RIGHT COLUMN: ACTION & RESERVATION PANEL */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 sticky top-20">
+            <h1 className="text-2xl font-light tracking-tight text-neutral-900 dark:text-neutral-100 mb-2">
+              {post.title}
+            </h1>
+
+            {/* PRICING TILE */}
+            <div className="border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 p-4 mb-6">
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-light text-orange-600 dark:text-orange-500 tabular-nums">
+                  ₹{rate}
+                </span>
+                <span className="text-xs uppercase text-neutral-500 font-semibold tracking-wide">
+                  / {rateUnit}
+                </span>
+              </div>
+              <div className="text-[11px] text-neutral-500 mt-1">
+                Refundable Escrow Deposit: <strong className="text-neutral-900 dark:text-neutral-100 font-semibold">₹{deposit}</strong>
+              </div>
             </div>
 
-            <div className="space-y-4 mb-6">
-              <h3 className="font-semibold text-slate-800 dark:text-slate-200">Select Dates</h3>
+            {/* DATES SELECTION */}
+            <div className="space-y-4 mb-6 text-xs">
+              <div className="font-semibold uppercase tracking-wider text-neutral-400 border-b border-neutral-200 dark:border-neutral-800 pb-1 text-[11px]">
+                Reservation Window
+              </div>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Pick-up</label>
-                  <input type="datetime-local" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none" value={startAt} onChange={e=>setStartAt(e.target.value)} />
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1">
+                    Pick-up (Start)
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={startAt}
+                    onChange={(e) => setStartAt(e.target.value)}
+                    className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 p-2 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Return</label>
-                  <input type="datetime-local" className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-orange-500 focus:outline-none" value={endAt} onChange={e=>setEndAt(e.target.value)} />
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1">
+                    Return (Deadline)
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={endAt}
+                    onChange={(e) => setEndAt(e.target.value)}
+                    className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 p-2 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
+                  />
                 </div>
               </div>
             </div>
 
+            {/* SUBMIT BUTTON */}
             {!isOwner ? (
-              <Button onClick={handleGetQuote} disabled={!startAt || !endAt || quoteLoading} className="w-full bg-orange-600 text-white font-bold py-3 rounded-xl shadow-sm hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                {quoteLoading ? 'Calculating...' : 'Request Item'}
-              </Button>
+              <button
+                type="button"
+                onClick={handleGetQuote}
+                disabled={quoteLoading || !isAvailable}
+                className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-xs font-semibold uppercase tracking-wider py-3 transition-colors"
+              >
+                {quoteLoading
+                  ? 'Calculating Escrow Quote...'
+                  : isAvailable
+                  ? 'Request to Borrow'
+                  : 'Currently Reserved'}
+              </button>
             ) : (
-              <div className="text-center p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 font-medium text-sm">
-                You own this listing
+              <div className="border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 p-3 text-center text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
+                You are the registered owner
               </div>
             )}
-            
-            <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center font-bold text-lg">
-                  {post.owner?.name?.charAt(0) || '?'}
+
+            {/* OWNER METRO TILE */}
+            <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-800 flex items-center gap-3 text-xs">
+              <div className="w-9 h-9 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-bold flex items-center justify-center text-sm flex-shrink-0">
+                {post.owner?.name?.charAt(0).toUpperCase() || 'O'}
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-neutral-900 dark:text-neutral-100">
+                  u/{post.owner?.name || 'Campus Member'}
                 </div>
-                <div>
-                  <p className="font-semibold text-slate-900 dark:text-slate-100">{post.owner?.name}</p>
-                  <p className="text-xs text-slate-500">{post.owner?.department || 'Member'}</p>
+                <div className="text-[11px] text-neutral-500">
+                  {post.owner?.department || 'Academic'} • Trust {post.owner?.trustScore != null ? Number(post.owner.trustScore).toFixed(1) : '4.9'}/5.0
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <AgreementModal isOpen={modalOpen} onClose={() => setModalOpen(false)} quote={quote} onAccept={handleAcceptRequest} />
+
+      <AgreementModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        quote={quote}
+        onAccept={handleAcceptRequest}
+      />
     </div>
   );
 }

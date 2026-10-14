@@ -3,7 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../context/CurrentUserContext';
 import { request } from '../api/client';
 
-const CHANNELS = ['Books', 'Electronics', 'Sports', 'Misc'];
+const CHANNELS = [
+  'Microcontrollers',
+  'Lab Optics & Sensors',
+  'Graphic Calculators',
+  'Audio Equipment',
+  'Mechanical Tools',
+  'General Hardware',
+];
 
 export default function RequestsBoard() {
   const navigate = useNavigate();
@@ -20,7 +27,7 @@ export default function RequestsBoard() {
   const loadRequests = useCallback(async () => {
     try {
       const allRequests = await request('GET', '/demand-requests');
-      setRequests(allRequests || []);
+      setRequests(Array.isArray(allRequests) ? allRequests : []);
     } catch (err) {
       console.error(err);
       setRequests([]);
@@ -33,7 +40,7 @@ export default function RequestsBoard() {
 
   const openRequestForm = () => {
     if (isGuest) {
-      promptSignIn('Sign in to post a community request');
+      promptSignIn('Sign in to broadcast a hardware request');
       return;
     }
     setShowForm(true);
@@ -44,7 +51,7 @@ export default function RequestsBoard() {
     if (!formData.title.trim()) return;
     setSubmitting(true);
     try {
-      await request('POST', '/demand-requests', formData);
+      await request('POST', '/demand-requests', { body: formData });
       setFormData({ title: '', description: '', channel: CHANNELS[0] });
       setShowForm(false);
       await loadRequests();
@@ -56,139 +63,142 @@ export default function RequestsBoard() {
   };
 
   const openRequests = requests.filter((req) => req.status !== 'fulfilled');
-  const myFulfilledRequests = requests.filter(
-    (req) => req.requesterId === currentUser?.id && req.status === 'fulfilled'
-  );
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+    <div className="mx-auto max-w-4xl space-y-6">
+      {/* HEADER */}
+      <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-800">Community Board</h1>
-          <p className="mt-2 text-sm text-slate-600">Need something that isn't listed? Ask the campus community.</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+              Campus Demand Board // Broadcasts
+            </span>
+          </div>
+          <h1 className="text-2xl font-light tracking-tight text-neutral-900 dark:text-neutral-100 mb-1">
+            Requests Board
+          </h1>
+          <p className="text-xs text-neutral-500">
+            Need an item not currently listed in the inventory? Broadcast an open request to campus peers.
+          </p>
         </div>
         <button
           type="button"
           onClick={openRequestForm}
-          className="rounded-lg bg-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-700 active:scale-95"
+          className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold uppercase tracking-wider px-5 py-2.5 transition-colors"
         >
-          ＋ Post a Request
+          + Post Request
         </button>
       </div>
 
+      {/* FORM */}
       {showForm && (
-        <form onSubmit={submitRequest} className="space-y-4 rounded-xl border border-orange-200 bg-orange-50/40 p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-slate-800">What are you looking for?</h2>
-            <button type="button" onClick={() => setShowForm(false)} className="text-sm font-bold text-slate-500 hover:text-slate-800">Cancel</button>
+        <form
+          onSubmit={submitRequest}
+          className="border border-orange-300 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20 p-6 space-y-4 text-xs"
+        >
+          <div className="flex items-center justify-between border-b border-orange-200 dark:border-orange-800/40 pb-2">
+            <span className="font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-400 text-[11px]">
+              New Broadcast Specification
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 uppercase font-semibold"
+            >
+              Cancel
+            </button>
           </div>
+
           <div>
-            <label className="block text-sm font-semibold text-slate-700">Request title *</label>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1">
+              Request Title *
+            </label>
             <input
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="e.g. Graphing calculator for Friday's exam"
-              className="mt-1.5 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-colors"
+              placeholder="e.g. TI-84 Plus CE Graphing Calculator for Math 201 exam Friday"
+              className="w-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-2.5 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
             />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700">Category *</label>
-              <select
-                value={formData.channel}
-                onChange={(e) => setFormData({ ...formData, channel: e.target.value })}
-                className="mt-1.5 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-colors"
-              >
-                {CHANNELS.map((ch) => <option key={ch} value={ch}>{ch}</option>)}
-              </select>
-            </div>
-          </div>
+
           <div>
-            <label className="block text-sm font-semibold text-slate-700">Description</label>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1">
+              Hardware Classification *
+            </label>
+            <select
+              value={formData.channel}
+              onChange={(e) => setFormData({ ...formData, channel: e.target.value })}
+              className="w-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-2.5 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
+            >
+              {CHANNELS.map((ch) => (
+                <option key={ch} value={ch}>
+                  {ch}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1">
+              Detailed Requirements & Time Window
+            </label>
             <textarea
               rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Add relevant details such as dates, model, or intended use."
-              className="mt-1.5 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-colors"
+              placeholder="Include dates needed, specific accessories, or target course code."
+              className="w-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-2.5 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none resize-none"
             />
           </div>
-          <div className="pt-2">
-            <button disabled={submitting} className="w-full sm:w-auto rounded-lg bg-orange-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-orange-700 disabled:opacity-50 transition-colors">
-              {submitting ? 'Posting...' : 'Post to Board'}
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-semibold uppercase tracking-wider px-6 py-2.5 text-xs transition-colors"
+            >
+              {submitting ? 'Broadcasting...' : 'Broadcast to Campus'}
             </button>
           </div>
         </form>
       )}
 
-      <section className="space-y-4">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">Open requests</h2>
-          <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded-full">{openRequests.length} open</span>
-        </div>
-        
-        {openRequests.length > 0 ? openRequests.map((req) => {
-          const isMine = req.requesterId === currentUser?.id;
-          return (
-            <article key={req.id} className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <span className="rounded bg-stone-100 px-2 py-1 text-xs font-bold uppercase tracking-wider text-slate-600 border border-stone-200">
+      {/* FEED */}
+      <div className="space-y-4">
+        {openRequests.length === 0 ? (
+          <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-12 text-center text-xs space-y-2">
+            <div className="text-neutral-400 uppercase tracking-wider font-semibold">No active community requests</div>
+            <p className="text-neutral-500">
+              There are no outstanding hardware requests broadcast right now.
+            </p>
+          </div>
+        ) : (
+          openRequests.map((req) => (
+            <div
+              key={req.id}
+              className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-5 space-y-3"
+            >
+              <div className="flex items-center justify-between gap-3 text-[11px]">
+                <span className="font-semibold text-neutral-500 uppercase tracking-wider border border-neutral-200 dark:border-neutral-800 px-2 py-0.5">
                   {req.channel || 'General'}
                 </span>
+                <span className="text-emerald-600 font-semibold uppercase tracking-wider text-[10px] border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5">
+                  Open
+                </span>
               </div>
-              <h3 className="text-lg font-bold text-slate-800">{req.title}</h3>
-              {req.description && <p className="mt-2 text-sm leading-relaxed text-slate-600">{req.description}</p>}
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-stone-100 pt-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-bold">
-                    {req.requesterName ? req.requesterName.charAt(0) : '?'}
-                  </div>
-                  <span className="text-xs font-medium text-slate-500">Requested by <strong className="text-slate-700">{req.requesterName || 'Campus Member'}</strong></span>
-                </div>
-                {!isMine && (
-                  <button
-                    type="button"
-                    onClick={() => isGuest ? promptSignIn('Sign in to fulfill a community request') : navigate('/create', { state: { demandRequest: req } })}
-                    className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-bold text-orange-700 hover:bg-orange-100 transition-colors"
-                  >
-                    I have this &rarr;
-                  </button>
-                )}
-              </div>
-            </article>
-          );
-        }) : (
-          <div className="rounded-xl border-2 border-dashed border-stone-200 bg-stone-50 p-10 text-center flex flex-col items-center">
-            <span className="text-4xl mb-3">📭</span>
-            <p className="text-sm font-medium text-slate-500">No open requests yet. Be the first to ask the community!</p>
-          </div>
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                {req.title}
+              </h2>
+              {req.description && (
+                <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                  {req.description}
+                </p>
+              )}
+            </div>
+          ))
         )}
-      </section>
-
-      {myFulfilledRequests.length > 0 && (
-        <section className="space-y-4 border-t border-stone-200 pt-8 mt-8">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">My fulfilled requests</h2>
-          <div className="grid gap-3">
-            {myFulfilledRequests.map((req) => (
-              <div key={req.id} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">✅</span>
-                  <div>
-                    <strong className="text-sm text-slate-800">{req.title}</strong>
-                    <span className="ml-3 rounded border border-emerald-200 bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">Fulfilled</span>
-                  </div>
-                </div>
-                {req.fulfilledByPostId && (
-                  <Link to={`/post/${req.fulfilledByPostId}`} className="text-xs font-bold text-orange-700 hover:text-orange-800 hover:underline">
-                    View listing &rarr;
-                  </Link>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      </div>
     </div>
   );
 }

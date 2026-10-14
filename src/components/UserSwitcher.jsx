@@ -1,208 +1,61 @@
-import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { useCurrentUser } from '../context/CurrentUserContext';
 
 export default function UserSwitcher() {
-  const {
-    currentUser,
-    isGuest,
-    users,
-    login,
-    logoutToGuest,
-    authPromptOpen,
-    setAuthPromptOpen,
-    authPromptMessage,
-  } = useCurrentUser();
-  const navigate = useNavigate();
+  const { currentUser, isGuest, logoutToGuest } = useCurrentUser();
 
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+  const trustScore = currentUser?.trust?.score != null ? currentUser.trust.score : 'N/A';
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSelectUser = (userId) => {
-    login(userId);
-    setDropdownOpen(false);
-  };
-
-  const handleLogout = () => {
-    logoutToGuest();
-    setDropdownOpen(false);
-  };
-
-  const trustLabel = (user) => user?.trust?.score == null ? 'N/A' : user.trust.score;
+  if (isGuest) {
+    return (
+      <div className="flex items-center gap-2">
+        <Link
+          to="/login"
+          className="border border-neutral-300 dark:border-neutral-700 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 px-3 py-1.5 text-xs font-semibold tracking-wide hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
+        >
+          Sign In
+        </Link>
+        <Link
+          to="/signup"
+          className="border border-neutral-300 dark:border-neutral-700 bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 px-3 py-1.5 text-xs font-semibold tracking-wide hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        >
+          Sign Up
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
-      {/* Trigger Button (Google Account Style Avatar) */}
+    <div className="flex items-center gap-3">
+      <Link
+        to="/profile"
+        className="flex items-center gap-2 border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-2.5 py-1 text-xs hover:border-neutral-400 dark:hover:border-neutral-700 transition-colors"
+        title="View Profile"
+      >
+        <div className="w-6 h-6 bg-orange-600 text-white font-bold flex items-center justify-center text-[11px]">
+          {currentUser.name?.charAt(0).toUpperCase() || 'U'}
+        </div>
+        <div className="flex flex-col text-left">
+          <span className="font-semibold text-xs text-neutral-900 dark:text-neutral-100">
+            {currentUser.name}
+          </span>
+          <span className="text-[11px] text-neutral-500">
+            {currentUser.department || 'Campus'} • {trustScore}/5.0
+          </span>
+        </div>
+        <span className="ml-1 text-[10px] font-semibold tracking-wide px-1.5 py-0.5 border border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">
+          Verified
+        </span>
+      </Link>
+
       <button
         type="button"
-        onClick={() => setDropdownOpen((prev) => !prev)}
-        className="flex items-center gap-2 rounded-full border border-stone-200 bg-white p-1 pr-3 text-xs font-semibold text-slate-700 shadow-sm hover:border-orange-300 hover:bg-stone-50 focus:outline-none transition-all"
-        aria-expanded={dropdownOpen}
+        onClick={logoutToGuest}
+        className="border border-neutral-300 dark:border-neutral-700 px-2.5 py-1 text-xs font-semibold tracking-wide text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:border-red-600 transition-colors"
       >
-        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-600 font-bold text-white shadow-sm font-heading">
-          {currentUser ? currentUser.name.charAt(0).toUpperCase() : '👤'}
-        </div>
-        <span className="hidden sm:inline font-medium text-slate-800">
-          {currentUser ? currentUser.name : 'Guest'}
-        </span>
-        <span className="text-slate-400 text-[10px]">▼</span>
+        Sign Out
       </button>
-
-      {/* Dropdown Menu */}
-      {dropdownOpen && (
-        <div className="absolute right-0 z-50 mt-2 w-72 origin-top-right rounded-xl border border-stone-200 bg-white p-3 shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100">
-          {/* Header Card */}
-          <div className="rounded-lg bg-stone-50 p-3 border border-stone-200/80 mb-2">
-            {currentUser ? (
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-slate-900 font-heading">{currentUser.name}</span>
-                  <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                    Verified
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">{currentUser.department} • {currentUser.year}</p>
-                <div className="mt-2 flex items-center justify-between text-xs pt-1.5 border-t border-stone-200/60">
-                  <span className="text-amber-600 font-semibold">★ {trustLabel(currentUser)}</span>
-                  <Link
-                    to="/profile"
-                    onClick={() => setDropdownOpen(false)}
-                    className="font-bold text-orange-600 hover:underline"
-                  >
-                    View Profile →
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-1">
-                <p className="text-xs font-bold text-slate-800 font-heading">Browsing as Guest</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Select an account below to request, list, or rate items.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Seed and previously-created accounts */}
-          <div className="space-y-1 my-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 block font-heading">
-              Select User Account
-            </span>
-            <div className="max-h-48 overflow-y-auto space-y-0.5">
-              {users.map((user) => {
-                const isSelected = currentUser?.id === user.id;
-                return (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => handleSelectUser(user.id)}
-                    className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-left transition-colors ${
-                      isSelected
-                        ? 'bg-orange-50 text-orange-800 font-bold border border-orange-200'
-                        : 'text-slate-700 hover:bg-stone-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-stone-200 text-[10px] font-bold text-slate-700 font-heading">
-                        {user.name.charAt(0)}
-                      </div>
-                      <span className="truncate">{user.name}</span>
-                    </div>
-                    <span className="text-[11px] text-slate-500 font-normal">
-                      ★ {trustLabel(user)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => { setDropdownOpen(false); navigate('/create-account'); }}
-            className="w-full rounded-lg border border-dashed border-orange-300 bg-orange-50/50 px-2.5 py-2 text-left text-xs font-bold text-orange-700 hover:bg-orange-50"
-          >
-            ＋ Create New Account
-          </button>
-
-          {/* Return to Guest Option */}
-          {!isGuest && (
-            <div className="border-t border-stone-100 pt-2 mt-2">
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-stone-50 text-left"
-              >
-                <span>🚪</span> Continue as Guest
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Global Sign-In Prompt Modal when Guest attempts action */}
-      {authPromptOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-xl border border-stone-200 bg-white p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 font-heading">Sign in to Continue</h3>
-              <button
-                onClick={() => setAuthPromptOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600">
-              {authPromptMessage}. Please select a user account to proceed:
-            </p>
-
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {users.map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => handleSelectUser(u.id)}
-                  className="w-full flex items-center justify-between rounded-lg border border-stone-200 p-2.5 text-xs text-left hover:border-orange-400 hover:bg-orange-50/50 transition-all"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-600 font-bold text-white font-heading">
-                      {u.name.charAt(0)}
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 block font-heading">{u.name}</span>
-                      <span className="text-[11px] text-slate-500">{u.department}</span>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-amber-600">★ {trustLabel(u)}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-stone-100">
-              <button
-                type="button"
-                onClick={() => setAuthPromptOpen(false)}
-                className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-stone-50"
-              >
-                Continue Browsing as Guest
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

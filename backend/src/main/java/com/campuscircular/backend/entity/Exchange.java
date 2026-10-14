@@ -3,6 +3,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 @Entity @Table(name = "exchanges")
+@com.fasterxml.jackson.annotation.JsonPropertyOrder({ "id", "state", "request", "post", "owner", "borrower" })
 public class Exchange {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @OneToOne @JoinColumn(name = "request_id") private Request request;

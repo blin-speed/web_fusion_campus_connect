@@ -25,10 +25,17 @@ public class AuthInterceptor implements HandlerInterceptor {
         String uri = request.getRequestURI();
         
         // Public endpoints
-        if (uri.startsWith("/api/v1/auth") || uri.startsWith("/api/v1/files") || uri.equals("/api/v1/locations") || 
+        if (uri.startsWith("/api/v1/auth") ||
+            uri.equals("/api/v1/admin/login") ||
+            uri.equals("/api/v1/admin/clock") ||
+            uri.equals("/api/v1/admin/reset-demo") ||
+            uri.startsWith("/api/v1/files") ||
+            uri.equals("/api/v1/locations") ||
+            uri.startsWith("/api/v1/categories") ||
+            uri.startsWith("/api/v1/discover") ||
+            uri.startsWith("/api/v1/impact") ||
             (request.getMethod().equalsIgnoreCase("GET") && uri.startsWith("/api/v1/posts")) ||
-            uri.startsWith("/api/v1/discover/compare") || uri.startsWith("/api/v1/impact") ||
-            (request.getMethod().equalsIgnoreCase("GET") && uri.equals("/api/v1/demand-requests")) ||
+            (request.getMethod().equalsIgnoreCase("GET") && uri.startsWith("/api/v1/demand-requests")) ||
             (request.getMethod().equalsIgnoreCase("GET") && uri.startsWith("/api/v1/users"))) {
             return true;
         }
@@ -36,6 +43,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith("Bearer ")) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            response.setContentType("application/json");
             response.getWriter().write("{\"error\":{\"code\":\"UNAUTHENTICATED\",\"message\":\"Missing token\"}}");
             return false;
         }
@@ -46,12 +54,14 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         if (userId == null || role == null) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            response.setContentType("application/json");
             response.getWriter().write("{\"error\":{\"code\":\"UNAUTHENTICATED\",\"message\":\"Invalid token\"}}");
             return false;
         }
 
         if (uri.startsWith("/api/v1/admin") && !"admin".equals(role)) {
             response.setStatus(HttpStatus.FORBIDDEN.value());
+            response.setContentType("application/json");
             response.getWriter().write("{\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Admin access required\"}}");
             return false;
         }
@@ -60,10 +70,13 @@ public class AuthInterceptor implements HandlerInterceptor {
             User user = userRepository.findById(userId).orElse(null);
             if (user == null) {
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":{\"code\":\"UNAUTHENTICATED\",\"message\":\"User not found\"}}");
                 return false;
             }
             if ("suspended".equals(user.getVerificationStatus()) && !request.getMethod().equalsIgnoreCase("GET")) {
                 response.setStatus(HttpStatus.FORBIDDEN.value());
+                response.setContentType("application/json");
                 response.getWriter().write("{\"error\":{\"code\":\"SUSPENDED\",\"message\":\"Account suspended\"}}");
                 return false;
             }

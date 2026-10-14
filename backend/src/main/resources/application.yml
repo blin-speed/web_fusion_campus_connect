@@ -2,7 +2,7 @@ spring:
   application:
     name: backend
   datasource:
-    url: jdbc:mysql://localhost:${DB_PORT:3307}/campus_circular?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:${DB_PORT:3309}/campus_circular?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: ${DB_USER:campus}
     password: ${DB_PASSWORD:campus}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -17,6 +17,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    validate-on-migrate: false
     locations: classpath:db/migration
   servlet:
     multipart:

@@ -5,19 +5,15 @@ export default function SearchBar({ onSearch, placeholder, initialValue = '' }) 
   const [query, setQuery] = useState(initialValue);
   const navigate = useNavigate();
 
-  // Live search: fire on every keystroke
+  // Live search: fire on every keystroke if handler provided
   useEffect(() => {
     if (onSearch) onSearch(query);
   }, [query]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (query.trim().toLowerCase().startsWith('need ')) {
-      navigate(`/need?text=${encodeURIComponent(query.trim())}`);
-    } else {
-      if (onSearch) onSearch(query);
-      navigate(`/browse?q=${encodeURIComponent(query)}`);
-    }
+    if (onSearch) onSearch(query);
+    navigate(`/browse?q=${encodeURIComponent(query.trim())}`);
   };
 
   const handleClear = () => {
@@ -26,30 +22,30 @@ export default function SearchBar({ onSearch, placeholder, initialValue = '' }) 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="relative flex w-full items-center group">
-      <span className="absolute left-3 text-slate-400 group-focus-within:text-orange-500 transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-        </svg>
+    <form onSubmit={handleSubmit} className="relative flex w-full items-center">
+      <span className="absolute left-3 text-neutral-400 text-xs font-semibold pointer-events-none">
+        &gt;
       </span>
       <input
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder={placeholder || 'Search items or type "need ..."'}
-        className="w-full rounded-full border border-slate-300 bg-white/50 backdrop-blur-sm pl-10 pr-10 py-2.5 text-sm text-slate-800 placeholder-slate-400 shadow-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+        placeholder={placeholder || 'Search inventory by keyword or model...'}
+        className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 pl-8 pr-16 py-2 text-xs text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:border-orange-600 focus:outline-none transition-colors"
       />
-      {query && (
+      {query ? (
         <button
           type="button"
           onClick={handleClear}
-          className="absolute right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1"
+          className="absolute right-2 px-2 py-0.5 text-xs font-semibold text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
           aria-label="Clear search"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-          </svg>
+          Clear
         </button>
+      ) : (
+        <span className="absolute right-3 text-[11px] text-neutral-400 pointer-events-none hidden sm:inline">
+          Enter ↵
+        </span>
       )}
     </form>
   );

@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { CurrentUserProvider, useCurrentUser } from './context/CurrentUserContext';
 import UserSwitcher from './components/UserSwitcher';
 import SearchBar from './components/SearchBar';
-// import CreatePostModal removed
 import { request } from './api/client';
 
 // Route components
@@ -11,37 +10,43 @@ import Home from './routes/Home';
 import Browse from './routes/Browse';
 import PostDetail from './routes/PostDetail';
 import CreatePost from './routes/CreatePost';
-import NeedDiscovery from './routes/NeedDiscovery';
 import MyRequests from './routes/MyRequests';
 import MyLending from './routes/MyLending';
 import ExchangeRoom from './routes/ExchangeRoom';
 import Admin from './routes/Admin';
 import Profile from './routes/Profile';
 import Impact from './routes/Impact';
-import RequestsBoard from './routes/RequestsBoard';
-import CreateAccount from './routes/CreateAccount';
+import Login from './routes/Login';
+import Signup from './routes/Signup';
 import RequireUser from './components/RequireUser';
-import DemoDock from './components/DemoDock';
 import Kit from './routes/_kit';
-import { Navigate } from 'react-router-dom';
-function NotificationBell() {
-  const { isGuest } = useCurrentUser();
+
+function NotificationIndicator() {
+  const { isGuest, currentUser } = useCurrentUser();
+  const location = useLocation();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (isGuest) return;
+    if (isGuest || !currentUser?.id) {
+      setCount(0);
+      return;
+    }
     const fetchCount = async () => {
       try {
-        const [myOwner, myBorrower] = await Promise.all([
+        const [incomingReqs, myOwner, myBorrower] = await Promise.all([
+          request('GET', '/requests/incoming').catch(() => []),
           request('GET', '/exchanges/mine?role=owner').catch(() => []),
           request('GET', '/exchanges/mine?role=borrower').catch(() => []),
         ]);
         let actionCount = 0;
-        (myOwner || []).forEach(ex => {
-          if (['pending_handover', 'paid', 'returned', 'pending_inspection'].includes(ex.status)) actionCount++;
+        (incomingReqs || []).forEach((req) => {
+          if (req.status === 'pending') actionCount++;
         });
-        (myBorrower || []).forEach(ex => {
-          if (['accepted', 'pending_payment', 'handed_over', 'active'].includes(ex.status)) actionCount++;
+        (myOwner || []).forEach((ex) => {
+          if (['handover', 'returned'].includes(ex.state)) actionCount++;
+        });
+        (myBorrower || []).forEach((ex) => {
+          if (['payment_pending', 'borrowed', 'inspected', 'settled'].includes(ex.state)) actionCount++;
         });
         setCount(actionCount);
       } catch (_e) {
@@ -49,46 +54,52 @@ function NotificationBell() {
       }
     };
     fetchCount();
-    const interval = setInterval(fetchCount, 60000);
+    const interval = setInterval(fetchCount, 30000);
     return () => clearInterval(interval);
-  }, [isGuest]);
+  }, [isGuest, currentUser, location.pathname]);
 
   if (isGuest) return null;
 
   return (
-    <Link to="/" className="relative flex items-center justify-center w-8 h-8 rounded-full text-slate-500 hover:bg-stone-100 hover:text-slate-700 transition-colors mr-2">
-      <span className="text-xl">ðŸ””</span>
-      {count > 0 && (
-        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
-          {count}
-        </span>
-      )}
+    <Link
+      to="/"
+      className={`border px-2.5 py-1 text-xs font-semibold tracking-wide transition-colors mr-2 ${
+        count > 0
+          ? 'border-red-600 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 animate-pulse'
+          : 'border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
+      }`}
+      title="Active Lending/Borrowing Alerts"
+    >
+      Alerts ({count})
     </Link>
   );
 }
 
 function TopBar({ onSearch, darkTheme, onToggleTheme }) {
   return (
-    <header className={`sticky top-0 z-40 border-b backdrop-blur shadow-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-900/95 text-slate-100' : 'border-stone-200 bg-white/95'}`}>
+    <header className="sticky top-0 z-40 border-b border-neutral-300 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-sm transition-colors">
       <div className="mx-auto flex max-w-7xl items-center justify-between flex-wrap gap-y-3 gap-x-4 px-4 py-2.5 sm:px-6">
         <Link to="/" className="flex-shrink-0 flex items-center gap-2 group order-1">
-          <span className="text-xl font-extrabold tracking-tight text-orange-600 dark:text-orange-500 group-hover:text-orange-500 transition-colors font-heading">
-            Campus<span className={darkTheme ? 'text-slate-100' : 'text-slate-800'}>Circular</span>
+          <span className="text-base sm:text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+            Campus<span className="text-orange-600">Connect</span>
+          </span>
+          <span className="hidden md:inline text-[10px] font-semibold uppercase tracking-wider text-neutral-500 border border-neutral-200 dark:border-neutral-800 px-1.5 py-0.5">
+            Peer Hardware Registry
           </span>
         </Link>
-        <div className="w-full sm:flex-1 sm:max-w-2xl order-3 sm:order-2">
-          <SearchBar onSearch={onSearch} placeholder="Search items..." />
+        <div className="w-full sm:flex-1 sm:max-w-xl order-3 sm:order-2">
+          <SearchBar onSearch={onSearch} placeholder="Search inventory by keyword or model..." />
         </div>
         <div className="flex-shrink-0 flex items-center order-2 sm:order-3">
-          <NotificationBell />
+          <NotificationIndicator />
           <UserSwitcher />
           <button
             type="button"
             onClick={onToggleTheme}
             title={darkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
-            className={`ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border text-sm transition-colors ${darkTheme ? 'border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700' : 'border-stone-200 bg-white text-slate-700 hover:bg-stone-100'}`}
+            className="ml-2 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 px-2.5 py-1 text-xs font-semibold tracking-wide transition-colors"
           >
-            {darkTheme ? '☀️' : '🌙'}
+            {darkTheme ? 'Light' : 'Dark'}
           </button>
         </div>
       </div>
@@ -96,21 +107,18 @@ function TopBar({ onSearch, darkTheme, onToggleTheme }) {
   );
 }
 
-// Removed CreatePostModal
-import { useNavigate } from 'react-router-dom';
-
 function FloatingCreateButton() {
-  const { isGuest, promptSignIn } = useCurrentUser();
+  const { isGuest } = useCurrentUser();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const hiddenPaths = ['/create', '/my-requests', '/my-lending', '/admin', '/profile', '/requests-board'];
+  const hiddenPaths = ['/create', '/borrowing', '/lending', '/admin', '/profile', '/login', '/signup'];
   const shouldHide = hiddenPaths.some((p) => location.pathname.startsWith(p));
   if (shouldHide) return null;
 
   const handleClick = () => {
     if (isGuest) {
-      promptSignIn('Sign in to list an item for lending');
+      navigate('/login', { state: { from: { pathname: '/create' } } });
       return;
     }
     navigate('/create');
@@ -121,11 +129,13 @@ function FloatingCreateButton() {
       type="button"
       onClick={handleClick}
       title="Create New Listing"
-      className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-2xl text-white shadow-lg hover:bg-orange-700 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-orange-300"
-    >+</button>
+      className="fixed bottom-6 right-6 z-40 flex items-center gap-2 border-2 border-orange-600 bg-orange-600 px-4 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-xl hover:bg-orange-700 transition-all active:scale-95"
+    >
+      <span>+</span>
+      <span>List Resource</span>
+    </button>
   );
 }
-
 
 const SearchContext = React.createContext({ query: '', setQuery: () => {} });
 export const useSearchContext = () => React.useContext(SearchContext);
@@ -154,6 +164,7 @@ function AppInner() {
 
   const location = useLocation();
   const isAdminRoute = location.pathname === '/admin';
+  const isAuthRoute = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/create-account';
 
   if (isAdminRoute) {
     return (
@@ -163,47 +174,55 @@ function AppInner() {
     );
   }
 
+  if (isAuthRoute) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/create-account" element={<Navigate to="/signup" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <SearchContext.Provider value={{ query: topbarQuery, setQuery: setTopbarQuery }}>
-      <div className={`min-h-screen bg-stone-50 text-slate-700 flex flex-col ${darkTheme ? 'dark-theme' : ''}`}>
+      <div className={`min-h-screen bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 flex flex-col font-sans transition-colors`}>
         {!backendUp && (
-          <div className="bg-red-500 text-white text-center py-1 text-sm font-semibold shadow-sm z-50">
-            Backend is unreachable. Please ensure the Spring Boot server is running.
+          <div className="bg-red-600 text-white text-center py-2 text-xs font-semibold uppercase tracking-wider z-50">
+            System Error: Backend is unreachable. Ensure Spring Boot is online on port 8080.
           </div>
         )}
         <TopBar onSearch={setTopbarQuery} darkTheme={darkTheme} onToggleTheme={() => setDarkTheme((current) => !current)} />
 
-        <main className={`mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8`}>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/browse" element={<Browse />} />
             <Route path="/post/:id" element={<PostDetail />} />
-            <Route path="/create" element={<CreatePost />} />
-            <Route path="/need" element={<NeedDiscovery />} />
+            <Route path="/create" element={<RequireUser user={true}><CreatePost /></RequireUser>} />
             
-            {/* New Routes & Redirects */}
-            <Route path="/my-requests" element={<Navigate to="/borrowing" />} />
-            <Route path="/my-lending" element={<Navigate to="/lending" />} />
-            <Route path="/requests-board" element={<Navigate to="/board" />} />
+            {/* Redirects */}
+            <Route path="/my-requests" element={<Navigate to="/borrowing" replace />} />
+            <Route path="/my-lending" element={<Navigate to="/lending" replace />} />
+            <Route path="/board" element={<Navigate to="/browse" replace />} />
+            <Route path="/requests-board" element={<Navigate to="/browse" replace />} />
+            <Route path="/need" element={<Navigate to="/browse" replace />} />
             
             <Route path="/borrowing" element={<RequireUser user={true}><MyRequests /></RequireUser>} />
             <Route path="/lending" element={<RequireUser user={true}><MyLending /></RequireUser>} />
             <Route path="/exchange/:id" element={<RequireUser user={true}><ExchangeRoom /></RequireUser>} />
-            <Route path="/board" element={<RequestsBoard />} />
             <Route path="/profile" element={<RequireUser user={true}><Profile /></RequireUser>} />
             <Route path="/u/:id" element={<Profile />} />
             <Route path="/impact" element={<Impact />} />
-            <Route path="/create-account" element={<CreateAccount />} />
             <Route path="/_kit" element={<Kit />} />
           </Routes>
         </main>
 
-        <footer className={`border-t py-4 text-center text-xs transition-colors ${darkTheme ? 'border-slate-700 bg-slate-800 text-slate-400' : 'border-stone-200 bg-white text-slate-500'}`}>
-          Campus Circular ? Peer-to-Peer Resource Lending Marketplace
+        <footer className="border-t border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 py-4 text-center text-xs text-neutral-500 transition-colors">
+          Campus Connect • Peer-to-Peer Hardware & Lab Lending • INR (₹)
         </footer>
 
         <FloatingCreateButton />
-        <DemoDock />
       </div>
     </SearchContext.Provider>
   );
@@ -218,6 +237,3 @@ export default function App() {
     </CurrentUserProvider>
   );
 }
-
-
-

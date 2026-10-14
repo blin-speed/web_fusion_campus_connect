@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Map;
 
 @Service
 public class ExchangeService {
@@ -23,11 +24,19 @@ public class ExchangeService {
     private final PricingService pricingService;
     private final Clock clock;
     private final LocationRepository locationRepository;
+    private final DisputeRepository disputeRepository;
+    private final UserRepository userRepository;
 
-    public ExchangeService(ExchangeRepository exchangeRepository, RequestRepository requestRepository,
-                           PostRepository postRepository, TransactionRepository transactionRepository,
-                           ExchangeEventRepository exchangeEventRepository, PricingService pricingService,
-                           Clock clock, LocationRepository locationRepository) {
+    public ExchangeService(ExchangeRepository exchangeRepository,
+                           RequestRepository requestRepository,
+                           PostRepository postRepository,
+                           TransactionRepository transactionRepository,
+                           ExchangeEventRepository exchangeEventRepository,
+                           PricingService pricingService,
+                           Clock clock,
+                           LocationRepository locationRepository,
+                           DisputeRepository disputeRepository,
+                           UserRepository userRepository) {
         this.exchangeRepository = exchangeRepository;
         this.requestRepository = requestRepository;
         this.postRepository = postRepository;
@@ -36,6 +45,8 @@ public class ExchangeService {
         this.pricingService = pricingService;
         this.clock = clock;
         this.locationRepository = locationRepository;
+        this.disputeRepository = disputeRepository;
+        this.userRepository = userRepository;
     }
 
     private Exchange getExchange(Long id) {
@@ -52,9 +63,9 @@ public class ExchangeService {
         ev.setCreatedAt(Instant.now(clock));
         exchangeEventRepository.save(ev);
     }
-    
+
     private void recordTx(Exchange exchange, String type, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) return;
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) return;
         Transaction tx = new Transaction();
         tx.setExchange(exchange);
         tx.setType(type);
@@ -93,10 +104,12 @@ public class ExchangeService {
         ex.setHandedOverAt(Instant.now(clock));
         ex.setConditionBefore(toJson(conditionBefore));
         exchangeRepository.save(ex);
-        
+
         Post post = ex.getPost();
-        post.setAvailability("lent");
-        postRepository.save(post);
+        if (post != null) {
+            post.setAvailability("lent");
+            postRepository.save(post);
+        }
 
         recordEvent(ex, "Handed over to borrower");
     }
@@ -109,26 +122,31 @@ public class ExchangeService {
 
         ex.setState("returned");
         ex.setReturnedAt(Instant.now(clock));
-        
+
         long lateUnits = pricingService.calculateLateUnits(ex.getReturnedAt(), ex.getDueAt(), ex.getRateUnit());
         ex.setLateUnits((int) lateUnits);
         ex.setLateFee(pricingService.calculateLateFee(lateUnits, ex.getLateFeePerUnit()));
-        
+
         exchangeRepository.save(ex);
         recordEvent(ex, "Returned by borrower. Notes: " + notes);
     }
 
-    @Transactional
     public void inspect(Long exchangeId, String conditionAfter, BigDecimal damageClaimAmount) {
+        inspect(exchangeId, conditionAfter, damageClaimAmount, null);
+    }
+
+    @Transactional
+    public void inspect(Long exchangeId, String conditionAfter, BigDecimal damageClaimAmount, String damageNotes) {
         Exchange ex = getExchange(exchangeId);
         if (!"returned".equals(ex.getState())) throw new IllegalStateException("Not returned");
         if (!ex.getOwner().getId().equals(AuthContext.getUserId())) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
 
         ex.setState("inspected");
         ex.setConditionAfter(toJson(conditionAfter));
-        
+
         if (damageClaimAmount != null && damageClaimAmount.compareTo(BigDecimal.ZERO) > 0) {
-            ex.setDamageClaim("{\"amount\":" + damageClaimAmount + ",\"status\":\"pending\"}");
+            String noteText = damageNotes != null ? damageNotes.replace("\"", "\\\"") : "Damage reported during inspection";
+            ex.setDamageClaim("{\"amount\":" + damageClaimAmount + ",\"notes\":\"" + noteText + "\",\"status\":\"pending\"}");
             exchangeRepository.save(ex);
             recordEvent(ex, "Inspected with damage claim: " + damageClaimAmount);
         } else {
@@ -143,44 +161,104 @@ public class ExchangeService {
         Exchange ex = getExchange(exchangeId);
         if (!"inspected".equals(ex.getState())) throw new IllegalStateException("Not inspected");
         if (!ex.getBorrower().getId().equals(AuthContext.getUserId())) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        
-        // Parsing json claim amount naively for speed
+
         String claim = ex.getDamageClaim();
         BigDecimal amount = BigDecimal.ZERO;
         if (claim != null && claim.contains("\"amount\":")) {
             String val = claim.split("\"amount\":")[1].split(",")[0].replace("}", "").trim();
             amount = new BigDecimal(val);
         }
-        
-        ex.setDamageClaim(claim.replace("\"pending\"", "\"accepted\""));
+
+        if (claim != null) {
+            ex.setDamageClaim(claim.replace("\"pending\"", "\"accepted\""));
+        }
         exchangeRepository.save(ex);
         recordEvent(ex, "Damage claim accepted");
         settle(exchangeId, amount);
     }
-    
+
+    @Transactional
+    public void damageContest(Long exchangeId, Map<String, Object> payload) {
+        Exchange ex = getExchange(exchangeId);
+        if (!"inspected".equals(ex.getState())) throw new IllegalStateException("Not inspected");
+        if (!ex.getBorrower().getId().equals(AuthContext.getUserId())) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+
+        String claim = ex.getDamageClaim();
+        BigDecimal amount = BigDecimal.ZERO;
+        if (claim != null && claim.contains("\"amount\":")) {
+            String val = claim.split("\"amount\":")[1].split(",")[0].replace("}", "").trim();
+            amount = new BigDecimal(val);
+        }
+
+        if (claim != null) {
+            ex.setDamageClaim(claim.replace("\"pending\"", "\"contested\""));
+        }
+        exchangeRepository.save(ex);
+
+        Dispute dispute = new Dispute();
+        dispute.setExchange(ex);
+        dispute.setRaisedBy(ex.getBorrower());
+        dispute.setKind("damage");
+        String reason = payload != null && payload.get("reason") != null
+                ? payload.get("reason").toString()
+                : "Borrower contested damage claim";
+        dispute.setReason(reason);
+        dispute.setClaimedAmount(amount);
+        dispute.setStatus("open");
+        dispute.setCreatedAt(Instant.now(clock));
+        disputeRepository.save(dispute);
+
+        recordEvent(ex, "Borrower contested damage claim; dispute opened");
+    }
+
+    @Transactional
+    public void reportDispute(Long exchangeId, Map<String, Object> payload) {
+        Exchange ex = getExchange(exchangeId);
+        Long userId = AuthContext.getUserId();
+        User raisedBy = userRepository.findById(userId).orElse(ex.getBorrower());
+
+        Dispute dispute = new Dispute();
+        dispute.setExchange(ex);
+        dispute.setRaisedBy(raisedBy);
+        dispute.setKind((String) payload.getOrDefault("kind", "damage"));
+        dispute.setReason((String) payload.getOrDefault("reason", "Issue reported"));
+        BigDecimal amount = payload.get("claimedAmount") != null
+                ? new BigDecimal(payload.get("claimedAmount").toString())
+                : BigDecimal.ZERO;
+        dispute.setClaimedAmount(amount);
+        dispute.setStatus("open");
+        dispute.setCreatedAt(Instant.now(clock));
+        disputeRepository.save(dispute);
+
+        recordEvent(ex, "Dispute reported: " + dispute.getReason());
+    }
+
     @Transactional
     public void settle(Long exchangeId, BigDecimal finalDamageDeduction) {
         Exchange ex = getExchange(exchangeId);
-        ex.setDamageDeduction(finalDamageDeduction);
-        
-        BigDecimal totalDeductions = ex.getLateFee().add(finalDamageDeduction);
+        ex.setDamageDeduction(finalDamageDeduction != null ? finalDamageDeduction : BigDecimal.ZERO);
+
+        BigDecimal lateFee = ex.getLateFee() != null ? ex.getLateFee() : BigDecimal.ZERO;
+        BigDecimal totalDeductions = lateFee.add(ex.getDamageDeduction());
         ex.setDepositRefund(pricingService.calculateDepositRefund(ex.getSecurityDeposit(), totalDeductions));
         ex.setExtraDue(pricingService.calculateExtraDue(ex.getSecurityDeposit(), totalDeductions));
         ex.setOwnerPayout(pricingService.calculateOwnerPayout(ex.getBorrowingCharge(), totalDeductions));
-        
+
         ex.setState("settled");
         exchangeRepository.save(ex);
-        
+
         recordTx(ex, "LATE_FEE", ex.getLateFee());
-        recordTx(ex, "DAMAGE_DEDUCTION", finalDamageDeduction);
+        recordTx(ex, "DAMAGE_DEDUCTION", ex.getDamageDeduction());
         recordTx(ex, "DEPOSIT_REFUND", ex.getDepositRefund());
         recordTx(ex, "EXTRA_CHARGE", ex.getExtraDue());
         recordTx(ex, "OWNER_PAYOUT", ex.getOwnerPayout());
-        
+
         Post post = ex.getPost();
-        post.setAvailability("available");
-        postRepository.save(post);
-        
+        if (post != null) {
+            post.setAvailability("available");
+            postRepository.save(post);
+        }
+
         recordEvent(ex, "Exchange settled automatically");
     }
 
@@ -189,7 +267,7 @@ public class ExchangeService {
         Exchange ex = getExchange(exchangeId);
         if (!"settled".equals(ex.getState())) throw new IllegalStateException("Not settled");
         if (!ex.getBorrower().getId().equals(AuthContext.getUserId())) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        
+
         ex.setState("rated");
         ex.setRating(rating);
         ex.setReview(review);
@@ -199,9 +277,9 @@ public class ExchangeService {
 
     /** Ensure value is stored as valid JSON for MySQL JSON columns. */
     private String toJson(String value) {
-        if (value == null) return null;
+        if (value == null || value.isBlank()) return "{\"notes\":\"Verified\"}";
         String trimmed = value.trim();
-        if (trimmed.startsWith("{") || trimmed.startsWith("[") || trimmed.startsWith("\"")) return trimmed;
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) return trimmed;
         // Wrap plain text as a JSON object
         return "{\"notes\":\"" + trimmed.replace("\"", "\\\"") + "\"}";
     }

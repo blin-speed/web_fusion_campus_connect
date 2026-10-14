@@ -6,14 +6,12 @@ import com.campuscircular.backend.entity.Exchange;
 import com.campuscircular.backend.entity.Dispute;
 import com.campuscircular.backend.entity.Transaction;
 import com.campuscircular.backend.repository.*;
-import org.springframework.http.HttpStatus;
+import com.campuscircular.backend.service.ExchangeService;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 import java.math.BigDecimal;
 import java.util.List;
-import java.time.Instant;
 import java.time.Clock;
 
 @RestController
@@ -26,19 +24,28 @@ public class AdminController {
     private final DisputeRepository disputeRepository;
     private final TransactionRepository transactionRepository;
     private final SettingRepository settingRepository;
+    private final ExchangeService exchangeService;
     private final Clock clock;
     private final com.campuscircular.backend.config.ClockConfig clockConfig;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
-    public AdminController(UserRepository userRepository, PostRepository postRepository, 
-                           ExchangeRepository exchangeRepository, DisputeRepository disputeRepository, 
-                           TransactionRepository transactionRepository, SettingRepository settingRepository, 
-                           Clock clock, com.campuscircular.backend.config.ClockConfig clockConfig) {
+    public AdminController(UserRepository userRepository,
+                           PostRepository postRepository,
+                           ExchangeRepository exchangeRepository,
+                           DisputeRepository disputeRepository,
+                           TransactionRepository transactionRepository,
+                           SettingRepository settingRepository,
+                           ExchangeService exchangeService,
+                           Clock clock,
+                           com.campuscircular.backend.config.ClockConfig clockConfig) {
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.exchangeRepository = exchangeRepository;
         this.disputeRepository = disputeRepository;
         this.transactionRepository = transactionRepository;
         this.settingRepository = settingRepository;
+        this.exchangeService = exchangeService;
         this.clock = clock;
         this.clockConfig = clockConfig;
     }
@@ -46,19 +53,41 @@ public class AdminController {
     @GetMapping("/stats")
     public Object stats() {
         List<Exchange> exchangesList = exchangeRepository.findAll();
-        long overdueCount = exchangesList.stream().filter(e -> "BORROWED".equals(e.getState()) && e.getDueAt() != null && e.getDueAt().isBefore(clock.instant())).count();
-        
+        long overdueCount = exchangesList.stream()
+                .filter(e -> "borrowed".equalsIgnoreCase(e.getState()) && e.getDueAt() != null && e.getDueAt().isBefore(clock.instant()))
+                .count();
+
         List<Dispute> disputes = disputeRepository.findAll();
-        long openDisputes = disputes.stream().filter(d -> "open".equalsIgnoreCase(d.getStatus())).count();
+        long openDisputes = disputes.stream()
+                .filter(d -> "open".equalsIgnoreCase(d.getStatus()))
+                .count();
 
         List<Transaction> txs = transactionRepository.findAll();
-        BigDecimal gmv = txs.stream().filter(t -> "payment".equalsIgnoreCase(t.getType())).map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal deposits = exchangesList.stream().map(e -> e.getSecurityDeposit() != null ? e.getSecurityDeposit() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal platformFeesCollected = txs.stream().filter(t -> "fee".equalsIgnoreCase(t.getType())).map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        // As a fallback for fee if not explicitly recorded as "fee" transaction type
+        BigDecimal gmv = txs.stream()
+                .filter(t -> "BORROWING_CHARGE".equalsIgnoreCase(t.getType()))
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (gmv.compareTo(BigDecimal.ZERO) == 0) {
+            gmv = exchangesList.stream()
+                    .map(e -> e.getBorrowingCharge() != null ? e.getBorrowingCharge() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
+        BigDecimal deposits = exchangesList.stream()
+                .map(e -> e.getSecurityDeposit() != null ? e.getSecurityDeposit() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal platformFeesCollected = txs.stream()
+                .filter(t -> "PLATFORM_FEE".equalsIgnoreCase(t.getType()))
+                .map(Transaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // As a fallback for fee if not explicitly recorded as "PLATFORM_FEE" transaction type
         if (platformFeesCollected.compareTo(BigDecimal.ZERO) == 0) {
-            platformFeesCollected = exchangesList.stream().map(e -> e.getPlatformFee() != null ? e.getPlatformFee() : BigDecimal.ZERO).reduce(BigDecimal.ZERO, BigDecimal::add);
+            platformFeesCollected = exchangesList.stream()
+                    .map(e -> e.getPlatformFee() != null ? e.getPlatformFee() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
 
         return Map.of(
@@ -148,12 +177,50 @@ public class AdminController {
     }
 
     @PostMapping("/disputes/{id}/resolve")
-    public Object resolve(@PathVariable Long id, @RequestBody Map<String, String> payload) {
+    public Object resolve(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
         Dispute d = disputeRepository.findById(id).orElseThrow();
+
+        String rawRes = payload != null && payload.get("resolution") != null
+                ? payload.get("resolution").toString().toLowerCase().trim()
+                : "favor_owner";
+
+        String validRes;
+        if ("favor_borrower".equals(rawRes) || "favor_owner".equals(rawRes) || "split".equals(rawRes)) {
+            validRes = rawRes;
+        } else {
+            validRes = "favor_owner";
+        }
+
+        BigDecimal finalDeduction;
+        if (payload != null && payload.get("finalDeduction") != null) {
+            finalDeduction = new BigDecimal(payload.get("finalDeduction").toString());
+        } else if ("favor_borrower".equals(validRes)) {
+            finalDeduction = BigDecimal.ZERO;
+        } else if ("split".equals(validRes)) {
+            BigDecimal claimed = d.getClaimedAmount() != null ? d.getClaimedAmount() : BigDecimal.ZERO;
+            finalDeduction = claimed.divide(BigDecimal.valueOf(2), 2, java.math.RoundingMode.HALF_UP);
+        } else {
+            finalDeduction = d.getClaimedAmount() != null ? d.getClaimedAmount() : BigDecimal.ZERO;
+        }
+
+        String adminNote = payload != null && payload.get("adminNote") != null
+                ? payload.get("adminNote").toString()
+                : "Resolved by Admin";
+
         d.setStatus("resolved");
-        d.setResolution(payload.getOrDefault("resolution", "Resolved by admin"));
+        d.setResolution(validRes);
+        d.setFinalDeduction(finalDeduction);
+        d.setAdminNote(adminNote);
         d.setResolvedAt(clock.instant());
-        return disputeRepository.save(d);
+        Dispute savedDispute = disputeRepository.save(d);
+
+        if (d.getExchange() != null &&
+            !"settled".equals(d.getExchange().getState()) &&
+            !"rated".equals(d.getExchange().getState())) {
+            exchangeService.settle(d.getExchange().getId(), finalDeduction);
+        }
+
+        return savedDispute;
     }
 
     @GetMapping("/transactions")
@@ -170,7 +237,8 @@ public class AdminController {
     public Object updateSetting(@RequestBody Map<String, String> payload) {
         String key = payload.get("key");
         String value = payload.get("value");
-        com.campuscircular.backend.entity.Setting s = settingRepository.findById(key).orElse(new com.campuscircular.backend.entity.Setting());
+        com.campuscircular.backend.entity.Setting s = settingRepository.findById(key)
+                .orElse(new com.campuscircular.backend.entity.Setting());
         s.setKey(key);
         s.setValue(value);
         return settingRepository.save(s);
@@ -185,7 +253,25 @@ public class AdminController {
 
     @PostMapping("/reset-demo")
     public Object resetDemo() {
-        // Dummy implementation for now, can be expanded if needed
-        return Map.of("success", true);
+        if (jdbcTemplate != null) {
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+            jdbcTemplate.execute("TRUNCATE TABLE transactions");
+            jdbcTemplate.execute("TRUNCATE TABLE disputes");
+            jdbcTemplate.execute("TRUNCATE TABLE exchange_events");
+            jdbcTemplate.execute("TRUNCATE TABLE exchanges");
+            jdbcTemplate.execute("TRUNCATE TABLE requests");
+            jdbcTemplate.execute("TRUNCATE TABLE photos");
+            jdbcTemplate.execute("TRUNCATE TABLE posts");
+            jdbcTemplate.execute("TRUNCATE TABLE demand_requests");
+            jdbcTemplate.execute("TRUNCATE TABLE need_templates");
+            jdbcTemplate.execute("TRUNCATE TABLE item_types");
+            jdbcTemplate.execute("TRUNCATE TABLE users");
+            jdbcTemplate.execute("TRUNCATE TABLE categories");
+            jdbcTemplate.execute("TRUNCATE TABLE locations");
+            jdbcTemplate.execute("TRUNCATE TABLE settings");
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+        }
+        clockConfig.resetOffset();
+        return Map.of("success", true, "message", "Database completely cleaned and reset to empty state");
     }
 }

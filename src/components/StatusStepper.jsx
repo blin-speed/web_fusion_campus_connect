@@ -1,56 +1,62 @@
 import React from 'react';
 
 const STEPS = [
-  { id: 'payment_pending', label: 'Payment' },
-  { id: 'handover', label: 'Handover' },
-  { id: 'borrowed', label: 'Active' },
-  { id: 'returned', label: 'Returned' },
-  { id: 'inspected', label: 'Inspection' },
-  { id: 'settled', label: 'Settled' },
-  { id: 'rated', label: 'Completed' },
+  { id: 'payment_pending', num: '01', label: 'Payment' },
+  { id: 'handover', num: '02', label: 'Handover' },
+  { id: 'borrowed', num: '03', label: 'Active' },
+  { id: 'returned', num: '04', label: 'Returned' },
+  { id: 'inspected', num: '05', label: 'Inspect' },
+  { id: 'settled', num: '06', label: 'Settled' },
+  { id: 'rated', num: '07', label: 'Completed' },
 ];
 
 export default function StatusStepper({ state }) {
   const currentIndex = STEPS.findIndex((s) => s.id === state);
   const activeIndex = currentIndex === -1 ? 0 : currentIndex;
-  const isAllDone = state === 'rated' || state === 'cancelled';
+  const isCancelled = state === 'cancelled';
 
-  if (state === 'cancelled') {
-    return <div className="text-stone-500 font-bold p-4 text-center">Exchange Cancelled</div>;
+  if (isCancelled) {
+    return (
+      <div className="border border-red-600 bg-red-50 dark:bg-red-950/40 p-3 text-center text-xs font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">
+        Exchange Protocol Cancelled / Terminated
+      </div>
+    );
   }
 
   return (
-    <div className="w-full py-4 overflow-x-auto">
-      <div className="flex items-center justify-between min-w-[600px] px-2">
+    <div className="w-full py-2 overflow-x-auto">
+      <div className="flex items-center justify-between min-w-[620px] px-2 text-xs">
         {STEPS.map((step, idx) => {
           const isDone = idx < activeIndex;
           const isCurrent = idx === activeIndex;
 
           return (
             <React.Fragment key={step.id}>
-              <div className="flex flex-col items-center flex-shrink-0 w-16">
+              <div className="flex flex-col items-center flex-shrink-0 w-20">
                 <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition-all ${
-                    isAllDone && isCurrent
-                      ? 'bg-slate-700 text-white'
-                      : isCurrent
-                      ? 'bg-orange-600 text-white ring-4 ring-orange-100 shadow-sm'
+                  className={`w-7 h-7 flex items-center justify-center text-xs font-semibold border transition-colors ${
+                    isCurrent
+                      ? 'border-orange-600 bg-orange-600 text-white shadow'
                       : isDone
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-stone-200 text-slate-500'
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 text-neutral-400'
                   }`}
                 >
-                  {isDone ? '✓' : idx + 1}
+                  {isDone ? (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    step.num
+                  )}
                 </div>
                 <span
-                  className={`mt-2 text-xs text-center font-medium ${
-                    isAllDone && isCurrent
-                      ? 'font-bold text-slate-700'
-                      : isCurrent
-                      ? 'font-bold text-orange-600'
+                  className={`mt-1.5 text-[10px] text-center font-semibold tracking-wider uppercase ${
+                    isCurrent
+                      ? 'text-orange-600 dark:text-orange-400'
                       : isDone
-                      ? 'font-medium text-emerald-700'
-                      : 'text-slate-400'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-neutral-400'
                   }`}
                 >
                   {step.label}
@@ -58,8 +64,10 @@ export default function StatusStepper({ state }) {
               </div>
               {idx < STEPS.length - 1 && (
                 <div
-                  className={`h-1 flex-1 mx-2 rounded-full ${
-                    idx < activeIndex ? 'bg-emerald-500' : 'bg-stone-200'
+                  className={`h-0.5 flex-1 mx-1.5 transition-colors ${
+                    idx < activeIndex
+                      ? 'bg-emerald-600'
+                      : 'bg-neutral-200 dark:bg-neutral-800'
                   }`}
                 />
               )}

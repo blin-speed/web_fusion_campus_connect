@@ -3,6 +3,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 @Entity @Table(name = "posts")
+@com.fasterxml.jackson.annotation.JsonPropertyOrder({ "id", "title", "itemName", "description" })
 public class Post {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne @JoinColumn(name = "owner_id") private User owner;
