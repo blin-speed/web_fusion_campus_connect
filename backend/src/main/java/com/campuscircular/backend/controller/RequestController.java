@@ -30,6 +30,7 @@ public class RequestController {
     private final ExchangeRepository exchangeRepository;
     private final PricingService pricingService;
     private final UserRepository userRepository;
+    private final PostController postController;
     private final Clock clock;
 
     public RequestController(RequestRepository requestRepository,
@@ -37,12 +38,14 @@ public class RequestController {
                              ExchangeRepository exchangeRepository,
                              PricingService pricingService,
                              UserRepository userRepository,
+                             PostController postController,
                              Clock clock) {
         this.requestRepository = requestRepository;
         this.postRepository = postRepository;
         this.exchangeRepository = exchangeRepository;
         this.pricingService = pricingService;
         this.userRepository = userRepository;
+        this.postController = postController;
         this.clock = clock;
     }
 
@@ -86,17 +89,21 @@ public class RequestController {
 
     @GetMapping("/requests/mine")
     public List<Request> mine() {
-        return requestRepository.findAll().stream()
+        List<Request> list = requestRepository.findAll().stream()
                 .filter(r -> r.getBorrower() != null && r.getBorrower().getId().equals(AuthContext.getUserId()))
                 .toList();
+        list.forEach(r -> postController.attachPhotos(r.getPost()));
+        return list;
     }
 
     @GetMapping("/requests/incoming")
     public List<Request> incoming() {
-        return requestRepository.findAll().stream()
+        List<Request> list = requestRepository.findAll().stream()
                 .filter(r -> r.getPost() != null && r.getPost().getOwner() != null &&
                         r.getPost().getOwner().getId().equals(AuthContext.getUserId()))
                 .toList();
+        list.forEach(r -> postController.attachPhotos(r.getPost()));
+        return list;
     }
 
     @GetMapping("/posts/{id}/requests")
@@ -106,9 +113,11 @@ public class RequestController {
         if (post.getOwner() == null || !post.getOwner().getId().equals(AuthContext.getUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
-        return requestRepository.findAll().stream()
+        List<Request> list = requestRepository.findAll().stream()
                 .filter(r -> r.getPost() != null && r.getPost().getId().equals(id))
                 .toList();
+        list.forEach(r -> postController.attachPhotos(r.getPost()));
+        return list;
     }
 
     @PostMapping("/requests/{id}/accept")

@@ -5,6 +5,7 @@ import { useCurrentUser } from '../context/CurrentUserContext';
 import StatusStepper from '../components/StatusStepper';
 import ConditionChecklist from '../components/ConditionChecklist';
 import ConditionCompare from '../components/ConditionCompare';
+import PhotoUploader from '../components/PhotoUploader';
 
 export default function ExchangeRoom() {
   const { id } = useParams();
@@ -19,8 +20,12 @@ export default function ExchangeRoom() {
   // Form states
   const [conditionNote, setConditionNote] = useState('');
   const [damageAmount, setDamageAmount] = useState('');
-  const [rating, setRating] = useState(5);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [review, setReview] = useState('');
+  const [handoverPhotos, setHandoverPhotos] = useState([]);
+  const [returnPhotos, setReturnPhotos] = useState([]);
+  const [inspectPhotos, setInspectPhotos] = useState([]);
 
   const load = async () => {
     try {
@@ -91,10 +96,10 @@ export default function ExchangeRoom() {
         <div className="space-y-4 text-xs">
           <div className="border border-orange-300 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30 p-4">
             <div className="font-semibold uppercase tracking-wider text-orange-600 dark:text-orange-400 mb-1 text-[11px]">
-              Escrow Payment Required
+              Payment Required
             </div>
             <p className="text-neutral-700 dark:text-neutral-300 text-xs">
-              Your borrowing request has been approved by the owner. Please deposit the escrow payment to lock the hardware reservation.
+              Your borrowing request has been approved by the owner. Please complete the payment and deposit to confirm your reservation.
             </p>
             <div className="mt-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
               Upfront Total: <span className="text-orange-600 tabular-nums">₹{exchange.transactionAmount}</span>
@@ -105,7 +110,7 @@ export default function ExchangeRoom() {
             onClick={() => handleAction('pay', { dropoffLocationId: exchange.pickupLocation?.id })}
             className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 font-semibold uppercase tracking-wider text-xs transition-colors"
           >
-            Complete Escrow Payment (₹{exchange.transactionAmount})
+            Complete Payment (₹{exchange.transactionAmount})
           </button>
         </div>
       );
@@ -120,7 +125,7 @@ export default function ExchangeRoom() {
               Confirm Physical Handover
             </div>
             <p className="text-neutral-700 dark:text-neutral-300 text-xs">
-              Escrow payment is secured. Verify the items together with the borrower, note any cosmetic marks, and confirm transfer.
+              Payment is confirmed. Verify the items together with the borrower, note any cosmetic marks, and confirm transfer.
             </p>
           </div>
           <ConditionChecklist value={checklist} onChange={setChecklist} />
@@ -136,9 +141,20 @@ export default function ExchangeRoom() {
               className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 p-2.5 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
             />
           </div>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+              Handover Condition Photos (Optional / Recommended)
+            </label>
+            <PhotoUploader purpose="CONDITION_BEFORE" onUpload={setHandoverPhotos} maxPhotos={4} />
+          </div>
           <button
             type="button"
-            onClick={() => handleAction('handover', { conditionBefore: JSON.stringify({ notes: conditionNote, checklist }) })}
+            onClick={() =>
+              handleAction('handover', {
+                conditionBefore: JSON.stringify({ notes: conditionNote, checklist, photoIds: handoverPhotos }),
+                photoIds: handoverPhotos,
+              })
+            }
             className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 font-semibold uppercase tracking-wider text-xs transition-colors"
           >
             Confirm Physical Handover
@@ -174,9 +190,21 @@ export default function ExchangeRoom() {
               className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 p-2.5 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
             />
           </div>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+              Return Photos (Optional)
+            </label>
+            <PhotoUploader purpose="CONDITION_AFTER" onUpload={setReturnPhotos} maxPhotos={4} />
+          </div>
           <button
             type="button"
-            onClick={() => handleAction('return', { notes: conditionNote })}
+            onClick={() =>
+              handleAction('return', {
+                notes: conditionNote,
+                photoIds: returnPhotos,
+                conditionAfter: JSON.stringify({ notes: conditionNote, photoIds: returnPhotos }),
+              })
+            }
             className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 font-semibold uppercase tracking-wider text-xs transition-colors"
           >
             Confirm Item Return to Owner
@@ -194,7 +222,7 @@ export default function ExchangeRoom() {
               Return Received // Inspection Pending
             </div>
             <p className="text-neutral-700 dark:text-neutral-300 text-xs">
-              The borrower reported returning the item. Test all functions and inspect for damage before closing escrow.
+              The borrower reported returning the item. Test all functions and inspect for damage before completing the exchange.
             </p>
           </div>
           <div>
@@ -208,6 +236,12 @@ export default function ExchangeRoom() {
               placeholder="e.g. Bench tested, all functions intact, accessories verified."
               className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 p-2.5 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
             />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+              Inspection / Condition Photos (Optional)
+            </label>
+            <PhotoUploader purpose="CONDITION_AFTER" onUpload={setInspectPhotos} maxPhotos={4} />
           </div>
           <div className="border border-neutral-200 dark:border-neutral-800 p-3 bg-neutral-50 dark:bg-neutral-950">
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
@@ -225,7 +259,7 @@ export default function ExchangeRoom() {
                 className="w-32 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-1.5 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
               />
               <span className="text-[11px] text-neutral-400">
-                (Deducted from borrower escrow deposit)
+                (Deducted from borrower deposit)
               </span>
             </div>
           </div>
@@ -234,7 +268,8 @@ export default function ExchangeRoom() {
               type="button"
               onClick={() =>
                 handleAction('inspect', {
-                  conditionAfter: JSON.stringify({ notes: conditionNote }),
+                  conditionAfter: JSON.stringify({ notes: conditionNote, photoIds: inspectPhotos }),
+                  photoIds: inspectPhotos,
                   damage: damageAmount && parseFloat(damageAmount) > 0 ? { amount: parseFloat(damageAmount) } : null,
                 })
               }
@@ -263,7 +298,7 @@ export default function ExchangeRoom() {
               Damage Claim Filed by Owner
             </div>
             <p className="text-neutral-700 dark:text-neutral-300 text-xs">
-              The owner recorded damage during return inspection and requested a deduction from your deposit escrow.
+              The owner recorded damage during return inspection and requested a deduction from your security deposit.
             </p>
             <div className="mt-2 text-sm font-semibold text-red-600 tabular-nums">
               Claimed Deduction: ₹{exchange.damageDeduction || exchange.damage?.amount || '0'}
@@ -296,44 +331,80 @@ export default function ExchangeRoom() {
           <div className="space-y-4 text-xs">
             <div className="border border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 p-4">
               <div className="font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1 text-[11px]">
-                Exchange Settled // Escrow Released
+                Exchange Settled // Deposit Refunded
               </div>
               <p className="text-neutral-700 dark:text-neutral-300 text-xs">
-                Escrow funds have been successfully distributed. Please rate your lending partner to maintain campus trust scores.
+                Payment and deposit refund have been processed. Please rate your lending partner to maintain campus trust scores.
               </p>
             </div>
-            <div className="space-y-3 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
+            <div className="space-y-4 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
-                  Partner Trust Rating (1 to 5)
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-2">
+                  Partner Trust Rating (Select 1 to 5 Stars) *
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  value={rating}
-                  onChange={(e) => setRating(e.target.value)}
-                  className="w-24 border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 p-2 text-xs text-neutral-900 dark:text-neutral-100"
-                />
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        onClick={() => setRating(star)}
+                        className="text-2xl leading-none transition-transform hover:scale-125 focus:outline-none p-0.5"
+                        title={`${star} star${star > 1 ? 's' : ''}`}
+                      >
+                        <span
+                          className={
+                            (hoverRating || rating) >= star
+                              ? 'text-amber-500'
+                              : 'text-neutral-300 dark:text-neutral-700'
+                          }
+                        >
+                          ★
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 ml-2">
+                    {rating === 1 && '1 / 5 — Poor'}
+                    {rating === 2 && '2 / 5 — Fair'}
+                    {rating === 3 && '3 / 5 — Good'}
+                    {rating === 4 && '4 / 5 — Very Good'}
+                    {rating === 5 && '5 / 5 — Excellent'}
+                    {rating === 0 && (
+                      <span className="text-orange-600 dark:text-orange-400 font-normal">
+                        * Please choose a rating
+                      </span>
+                    )}
+                  </span>
+                </div>
               </div>
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
-                  Public Feedback / Review
+                  Public Feedback / Review (Optional)
                 </label>
                 <textarea
                   rows={2}
                   value={review}
                   onChange={(e) => setReview(e.target.value)}
                   placeholder="e.g. Excellent hardware condition, swift handover."
-                  className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 p-2 text-xs text-neutral-900 dark:text-neutral-100"
+                  className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 p-2 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
                 />
               </div>
               <button
                 type="button"
-                onClick={() => handleAction('rate', { rating: parseInt(rating, 10), review })}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2.5 font-semibold uppercase tracking-wider text-xs transition-colors"
+                disabled={!rating || rating < 1}
+                onClick={() => handleAction('rate', { rating, review })}
+                className={`w-full py-2.5 font-semibold uppercase tracking-wider text-xs transition-colors ${
+                  rating >= 1
+                    ? 'bg-orange-600 hover:bg-orange-700 text-white cursor-pointer'
+                    : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 cursor-not-allowed'
+                }`}
               >
-                Submit Rating & Complete Exchange
+                {rating >= 1
+                  ? `Submit ${rating}-Star Rating & Complete Exchange`
+                  : 'Select Rating to Complete Exchange'}
               </button>
             </div>
           </div>
@@ -345,7 +416,7 @@ export default function ExchangeRoom() {
             Exchange Settled
           </div>
           <p className="text-neutral-500">
-            Escrow payout of ₹{exchange.ownerPayout || '0'} has been released to your balance. Awaiting borrower review.
+            Payout of ₹{exchange.ownerPayout || '0'} has been released to your balance. Awaiting borrower review.
           </p>
         </div>
       );
@@ -476,7 +547,7 @@ export default function ExchangeRoom() {
                     <span>{exchange.dueAt ? new Date(exchange.dueAt).toLocaleString() : 'N/A'}</span>
                   </div>
                   <div className="flex justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
-                    <span className="text-neutral-400 font-medium">Escrow Transaction Total</span>
+                    <span className="text-neutral-400 font-medium">Transaction Total</span>
                     <strong className="text-orange-600 font-semibold tabular-nums">₹{exchange.transactionAmount}</strong>
                   </div>
                   <div className="flex justify-between">
@@ -531,13 +602,13 @@ export default function ExchangeRoom() {
                   </div>
                 )}
                 <div className="border-t border-neutral-200 dark:border-neutral-800 pt-2 text-[10px] text-neutral-400 uppercase font-semibold">
-                  Escrow Ledger Closed & Audited
+                  Exchange Closed & Settled
                 </div>
               </div>
             ) : (
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-neutral-500">Held in Escrow</span>
+                  <span className="text-neutral-500">Total Paid & Held</span>
                   <span className="font-semibold text-neutral-900 dark:text-neutral-100 tabular-nums">₹{exchange.transactionAmount || '0'}</span>
                 </div>
                 <div className="flex justify-between">

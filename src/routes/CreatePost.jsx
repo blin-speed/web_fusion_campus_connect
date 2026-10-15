@@ -108,17 +108,17 @@ export default function CreatePost() {
       <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 mb-4">
           <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-            Resource Registration • Peer Hardware
+            Resource Registration • Campus Resource
           </span>
           <span className="text-xs font-semibold text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 border border-orange-300 dark:border-orange-800">
-            INR (₹) Escrow
+            INR (₹) Lending
           </span>
         </div>
         <h1 className="text-2xl font-light tracking-tight text-neutral-900 dark:text-neutral-100 mb-1">
-          List Hardware Resource
+          List Campus Resource
         </h1>
         <p className="text-xs text-neutral-500 font-sans">
-          Register lab hardware, test gear, calculators, or development boards for peer borrowing on campus.
+          Register books, notes, filming equipment, lab gear, or sports items for peer borrowing on campus.
         </p>
       </div>
 
@@ -132,7 +132,7 @@ export default function CreatePost() {
         {/* PHOTOS SECTION */}
         <div>
           <div className="font-semibold uppercase tracking-wider text-neutral-500 border-b border-neutral-200 dark:border-neutral-800 pb-2 mb-3">
-            01. Hardware Photography
+            01. Resource Photography
           </div>
           <PhotoUploader onUpload={setPhotoIds} maxPhotos={4} />
         </div>
@@ -301,10 +301,10 @@ export default function CreatePost() {
           </div>
         </div>
 
-        {/* PRICING & ESCROW */}
+        {/* PRICING & SECURITY DEPOSIT */}
         <div className="space-y-4">
           <div className="font-semibold uppercase tracking-wider text-neutral-500 border-b border-neutral-200 dark:border-neutral-800 pb-2 mb-3">
-            03. Pricing & Security Escrow (₹)
+            03. Pricing & Security Deposit (₹)
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -337,7 +337,6 @@ export default function CreatePost() {
               >
                 <option value="HOUR">Per Hour</option>
                 <option value="DAY">Per Day</option>
-                <option value="WEEK">Per Week</option>
               </select>
             </div>
 

@@ -4,14 +4,15 @@ export function adaptUser(user) {
   return {
     ...user,
     year: user.studyYear, // Rename for UI
+    isVerified: !!(user.isVerified || user.verified),
     trust: {
-      score: user.trustScore || null,
-      badge: user.trustScore >= 80 ? 'Trusted' : user.trustScore >= 50 ? 'Reliable' : 'Caution',
-      ratingAvg: 0,
-      ratingsCount: 0,
-      successfulExchanges: 0,
-      lateReturns: 0,
-      disputes: 0,
+      score: user.trustScore != null ? user.trustScore : null,
+      badge: user.trustScore >= 4.5 ? 'Trusted' : user.trustScore >= 3.0 ? 'Reliable' : 'New',
+      ratingAvg: user.trustScore || 0,
+      ratingsCount: user.ratingsCount || 0,
+      successfulExchanges: user.successfulExchanges || 0,
+      lateReturns: user.lateReturns || 0,
+      disputes: user.disputes || 0,
       disputesLost: 0,
     }
   };

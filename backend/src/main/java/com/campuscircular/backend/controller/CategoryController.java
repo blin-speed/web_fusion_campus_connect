@@ -19,7 +19,23 @@ public class CategoryController {
 
     @GetMapping
     public List<Category> getCategories() {
-        return categoryRepository.findAll();
+        List<Category> all = categoryRepository.findAll();
+        if (all.isEmpty()) {
+            List<String> defaultNames = List.of(
+                "Filming Equipment",
+                "Electronics",
+                "Study Materials",
+                "Sports",
+                "Tools"
+            );
+            for (String name : defaultNames) {
+                Category c = new Category();
+                c.setName(name);
+                categoryRepository.save(c);
+            }
+            all = categoryRepository.findAll();
+        }
+        return all;
     }
 
     @PostMapping

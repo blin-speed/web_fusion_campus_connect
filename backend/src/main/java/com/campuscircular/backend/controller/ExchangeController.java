@@ -21,16 +21,37 @@ public class ExchangeController {
     private final ExchangeService exchangeService;
     private final ExchangeRepository exchangeRepository;
     private final TransactionRepository transactionRepository;
+    private final com.campuscircular.backend.repository.PhotoRepository photoRepository;
     private final ObjectMapper objectMapper;
+    private final PostController postController;
 
     public ExchangeController(ExchangeService exchangeService,
                               ExchangeRepository exchangeRepository,
                               TransactionRepository transactionRepository,
-                              @org.springframework.beans.factory.annotation.Autowired(required = false) ObjectMapper objectMapper) {
+                              com.campuscircular.backend.repository.PhotoRepository photoRepository,
+                              @org.springframework.beans.factory.annotation.Autowired(required = false) ObjectMapper objectMapper,
+                              PostController postController) {
         this.exchangeService = exchangeService;
         this.exchangeRepository = exchangeRepository;
         this.transactionRepository = transactionRepository;
+        this.photoRepository = photoRepository;
         this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
+        this.postController = postController;
+    }
+
+    private void linkPhotos(Long exchangeId, Object rawPhotoIds, String purpose) {
+        if (rawPhotoIds instanceof List<?> list) {
+            for (Object pid : list) {
+                try {
+                    Long id = Long.valueOf(pid.toString());
+                    photoRepository.findById(id).ifPresent(p -> {
+                        p.setExchangeId(exchangeId);
+                        if (purpose != null) p.setPurpose(purpose);
+                        photoRepository.save(p);
+                    });
+                } catch (Exception ignored) {}
+            }
+        }
     }
 
     private String extractJson(Object raw) {
@@ -49,17 +70,21 @@ public class ExchangeController {
 
     @GetMapping("/mine")
     public List<Exchange> mine(@RequestParam(required = false) String role) {
-        return exchangeRepository.findAll().stream().filter(e -> {
+        List<Exchange> list = exchangeRepository.findAll().stream().filter(e -> {
             if ("owner".equals(role)) return e.getOwner() != null && e.getOwner().getId().equals(AuthContext.getUserId());
             if ("borrower".equals(role)) return e.getBorrower() != null && e.getBorrower().getId().equals(AuthContext.getUserId());
             return (e.getOwner() != null && e.getOwner().getId().equals(AuthContext.getUserId())) ||
                    (e.getBorrower() != null && e.getBorrower().getId().equals(AuthContext.getUserId()));
         }).toList();
+        list.forEach(e -> postController.attachPhotos(e.getPost()));
+        return list;
     }
 
     @GetMapping("/{id}")
     public Exchange detail(@PathVariable Long id) {
-        return exchangeRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Exchange ex = exchangeRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        postController.attachPhotos(ex.getPost());
+        return ex;
     }
 
     @PatchMapping("/{id}/locations")
@@ -78,16 +103,21 @@ public class ExchangeController {
 
     @PostMapping("/{id}/handover")
     public void handover(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
+        linkPhotos(id, payload.get("photoIds"), "CONDITION_BEFORE");
         exchangeService.handover(id, extractJson(payload.get("conditionBefore")));
     }
 
     @PostMapping("/{id}/return")
     public void returnItem(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
-        exchangeService.returnItem(id, (String) payload.get("notes"));
+        linkPhotos(id, payload.get("photoIds"), "CONDITION_AFTER");
+        String notes = payload.get("notes") != null ? payload.get("notes").toString() : "";
+        String condAfter = payload.get("conditionAfter") != null ? extractJson(payload.get("conditionAfter")) : extractJson(payload);
+        exchangeService.returnItem(id, notes, condAfter);
     }
 
     @PostMapping("/{id}/inspect")
     public void inspect(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
+        linkPhotos(id, payload.get("photoIds"), "CONDITION_AFTER");
         BigDecimal dmg = null;
         String damageNotes = null;
         if (payload.containsKey("damage") && payload.get("damage") != null) {
@@ -114,7 +144,18 @@ public class ExchangeController {
 
     @PostMapping("/{id}/rate")
     public void rate(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
-        Integer rating = payload.get("rating") != null ? Integer.valueOf(payload.get("rating").toString()) : 5;
+        if (payload == null || payload.get("rating") == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating between 1 and 5 is required");
+        }
+        int rating;
+        try {
+            rating = Integer.parseInt(payload.get("rating").toString());
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must be a valid integer between 1 and 5");
+        }
+        if (rating < 1 || rating > 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must be between 1 and 5");
+        }
         String review = payload.get("review") != null ? payload.get("review").toString() : "";
         exchangeService.rate(id, rating, review);
     }

@@ -42,7 +42,7 @@ export default function Login() {
           </span>
         </Link>
         <p className="text-xs text-neutral-500 uppercase tracking-wider mt-1">
-          Peer Hardware Registry
+          Campus Resource Registry
         </p>
       </div>
 

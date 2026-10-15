@@ -10,7 +10,7 @@ export default function Signup() {
     username: '',
     password: '',
     department: '',
-    year: '',
+    year: '1',
     bio: '',
   });
   const [submitting, setSubmitting] = useState(false);
@@ -44,7 +44,7 @@ export default function Signup() {
           </span>
         </Link>
         <p className="text-xs text-neutral-500 uppercase tracking-wider mt-1">
-          Peer Hardware Registry
+          Campus Resource Exchange
         </p>
       </div>
 
@@ -128,15 +128,19 @@ export default function Signup() {
               >
                 Academic Year *
               </label>
-              <input
+              <select
                 id="signup-year"
-                type="text"
                 required
-                value={formData.year}
+                value={formData.year || '1'}
                 onChange={(e) => setFormData((cur) => ({ ...cur, year: e.target.value }))}
-                placeholder="e.g. 3rd Year"
                 className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 px-3 py-2 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
-              />
+              >
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
             </div>
           </div>
 

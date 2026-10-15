@@ -1,17 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../context/CurrentUserContext';
+import { useSearchContext } from '../App';
 import { request } from '../api/client';
+
+const DEFAULT_CATEGORIES = [
+  { id: 1, name: 'Filming Equipment' },
+  { id: 2, name: 'Electronics' },
+  { id: 3, name: 'Study Materials' },
+  { id: 4, name: 'Sports' },
+  { id: 5, name: 'Tools' },
+];
 
 export default function Home() {
   const { isGuest, currentUser } = useCurrentUser();
+  const { query: searchQuery, setQuery: setSearchQuery } = useSearchContext();
   const navigate = useNavigate();
 
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [actionItems, setActionItems] = useState([]);
   const [telemetry, setTelemetry] = useState({ lendersCount: 0, savingsInr: 0, activeExchanges: 0 });
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
 
   // Filters & Sorting
   const [selectedChannel, setSelectedChannel] = useState('all');
@@ -20,7 +30,11 @@ export default function Home() {
 
   useEffect(() => {
     request('GET', '/categories')
-      .then((data) => setCategories(Array.isArray(data) ? data : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCategories(data);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -51,17 +65,28 @@ export default function Home() {
     if (!isGuest && currentUser?.id) {
       Promise.all([
         request('GET', '/requests/incoming').catch(() => []),
+        request('GET', '/requests/mine').catch(() => []),
         request('GET', '/exchanges/mine?role=owner').catch(() => []),
         request('GET', '/exchanges/mine?role=borrower').catch(() => []),
-      ]).then(([incomingRequests, myOwner, myBorrower]) => {
+      ]).then(([incomingRequests, outgoingRequests, myOwner, myBorrower]) => {
         const items = [];
 
         (incomingRequests || []).forEach((req) => {
           if (req.status === 'pending') {
             items.push({
-              id: req.id,
+              id: 'in-' + req.id,
               text: 'Incoming Request: ' + (req.borrower?.name || 'Peer') + ' requested "' + (req.post?.title || 'Resource') + '"',
               link: '/lending',
+            });
+          }
+        });
+
+        (outgoingRequests || []).forEach((req) => {
+          if (req.status === 'pending') {
+            items.push({
+              id: 'out-' + req.id,
+              text: 'Request Sent: Waiting for owner approval for "' + (req.post?.title || 'Resource') + '"',
+              link: '/borrowing',
             });
           }
         });
@@ -141,6 +166,17 @@ export default function Home() {
 
   // Filter & Sort Posts
   const filteredPosts = posts.filter((p) => {
+    if (searchQuery && searchQuery.trim() !== '') {
+      const q = searchQuery.trim().toLowerCase();
+      const matchTitle = (p.title || '').toLowerCase().includes(q);
+      const matchItemName = (p.itemName || '').toLowerCase().includes(q);
+      const matchDesc = (p.description || '').toLowerCase().includes(q);
+      const matchCategory = (p.category?.name || '').toLowerCase().includes(q);
+      if (!matchTitle && !matchItemName && !matchDesc && !matchCategory) {
+        return false;
+      }
+    }
+
     if (availabilityFilter === 'available') {
       return p.availability === 'available' || p.status === 'available';
     }
@@ -347,7 +383,7 @@ export default function Home() {
             </p>
             <button
               type="button"
-              onClick={() => { setSelectedChannel('all'); setAvailabilityFilter('all'); }}
+              onClick={() => { setSelectedChannel('all'); setAvailabilityFilter('all'); setSearchQuery(''); }}
               className="text-xs font-semibold text-orange-600 hover:underline uppercase tracking-wide"
             >
               Reset Filters
@@ -360,7 +396,7 @@ export default function Home() {
               const rateUnit = (post.rateUnit || 'day').toLowerCase();
               const deposit = post.securityDeposit != null ? post.securityDeposit : (post.deposit || 0);
               const ownerName = post.owner?.name || 'Campus Member';
-              const ownerTrust = post.owner?.trustScore != null ? `${post.owner.trustScore}/5.0` : 'New Member';
+              const ownerTrust = post.owner?.trustScore != null ? `${post.owner.trustScore}/5.0` : 'NA';
               const categoryName = post.category?.name || 'Hardware';
               const locationName = post.location?.name || 'Campus';
               const isAvail = post.availability === 'available' || post.status === 'available';
@@ -370,12 +406,17 @@ export default function Home() {
                   key={post.id}
                   className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex transition-colors hover:border-neutral-400 dark:hover:border-neutral-700"
                 >
-                  {/* LEFT RATE TILE */}
-                  <div className="w-24 bg-neutral-100 dark:bg-neutral-950 flex flex-col items-center justify-center border-r border-neutral-300 dark:border-neutral-800 p-3 text-center flex-shrink-0">
-                    <span className="text-lg font-light text-orange-600 dark:text-orange-500 tabular-nums">
+                  {/* LEFT RATE TILE & PHOTO */}
+                  <div className="w-24 bg-neutral-100 dark:bg-neutral-950 flex flex-col items-center justify-center border-r border-neutral-300 dark:border-neutral-800 p-2 text-center flex-shrink-0 relative overflow-hidden">
+                    {post.photos && post.photos.length > 0 && (
+                      <div className="w-full h-12 mb-1 overflow-hidden border border-neutral-200 dark:border-neutral-800">
+                        <img src={post.photos[0].url} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <span className="text-base font-light text-orange-600 dark:text-orange-500 tabular-nums">
                       ₹{rate}
                     </span>
-                    <span className="text-[11px] text-neutral-500">
+                    <span className="text-[10px] text-neutral-500">
                       /{rateUnit}
                     </span>
                   </div>
@@ -528,7 +569,7 @@ export default function Home() {
             </div>
             <div className="flex items-start gap-2">
               <span className="font-semibold text-orange-600">03.</span>
-              <span>Security deposit held in escrow until safe post-return inspection.</span>
+              <span>Security deposit held safely until return inspection.</span>
             </div>
           </div>
         </div>

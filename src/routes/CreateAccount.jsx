@@ -107,14 +107,19 @@ export default function CreateAccount() {
               <label htmlFor="reg-year" className="block text-[11px] font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 mb-1">
                 ACADEMIC YEAR *
               </label>
-              <input
+              <select
                 id="reg-year"
                 required
-                value={formData.year}
+                value={formData.year || '1'}
                 onChange={(e) => setFormData((cur) => ({ ...cur, year: e.target.value }))}
-                placeholder="e.g. 3rd Year"
                 className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 px-3 py-2 text-xs text-neutral-900 dark:text-neutral-100 font-mono focus:border-orange-600 focus:outline-none"
-              />
+              >
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
             </div>
           </div>
 

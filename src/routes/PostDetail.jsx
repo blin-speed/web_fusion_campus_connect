@@ -83,12 +83,18 @@ export default function PostDetail() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
         const p = await request('GET', `/posts/${id}`);
         setPost(p);
+        if (!isGuest) {
+          const myReqs = await request('GET', '/requests/mine').catch(() => []);
+          const isPending = Array.isArray(myReqs) && myReqs.some(r => r.post?.id === Number(id) && r.status === 'pending');
+          setHasPendingRequest(isPending);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -96,7 +102,7 @@ export default function PostDetail() {
       }
     }
     load();
-  }, [id]);
+  }, [id, isGuest]);
 
   const handleGetQuote = async () => {
     if (isGuest) {
@@ -249,7 +255,7 @@ export default function PostDetail() {
                 </span>
               </div>
               <div className="text-[11px] text-neutral-500 mt-1">
-                Refundable Escrow Deposit: <strong className="text-neutral-900 dark:text-neutral-100 font-semibold">₹{deposit}</strong>
+                Refundable Security Deposit: <strong className="text-neutral-900 dark:text-neutral-100 font-semibold">₹{deposit}</strong>
               </div>
             </div>
 
@@ -284,20 +290,34 @@ export default function PostDetail() {
               </div>
             </div>
 
-            {/* SUBMIT BUTTON */}
+            {/* SUBMIT BUTTON OR PENDING NOTICE */}
             {!isOwner ? (
-              <button
-                type="button"
-                onClick={handleGetQuote}
-                disabled={quoteLoading || !isAvailable}
-                className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-xs font-semibold uppercase tracking-wider py-3 transition-colors"
-              >
-                {quoteLoading
-                  ? 'Calculating Escrow Quote...'
-                  : isAvailable
-                  ? 'Request to Borrow'
-                  : 'Currently Reserved'}
-              </button>
+              hasPendingRequest ? (
+                <div className="space-y-2">
+                  <div className="border border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-3 text-center text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                    Request Sent • Awaiting Owner Approval
+                  </div>
+                  <Link
+                    to="/borrowing"
+                    className="block text-center text-xs font-semibold uppercase tracking-wider text-orange-600 hover:underline"
+                  >
+                    View Status in My Borrowing →
+                  </Link>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGetQuote}
+                  disabled={quoteLoading || !isAvailable}
+                  className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-xs font-semibold uppercase tracking-wider py-3 transition-colors"
+                >
+                  {quoteLoading
+                    ? 'Calculating Price Quote...'
+                    : isAvailable
+                    ? 'Request to Borrow'
+                    : 'Currently Reserved'}
+                </button>
+              )
             ) : (
               <div className="border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 p-3 text-center text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
                 You are the registered owner

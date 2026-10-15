@@ -31,6 +31,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             uri.equals("/api/v1/admin/reset-demo") ||
             uri.startsWith("/api/v1/files") ||
             uri.equals("/api/v1/locations") ||
+            uri.equals("/api/v1/categories") ||
             uri.startsWith("/api/v1/categories") ||
             uri.startsWith("/api/v1/discover") ||
             uri.startsWith("/api/v1/impact") ||

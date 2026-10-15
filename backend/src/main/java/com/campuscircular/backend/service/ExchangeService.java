@@ -114,8 +114,12 @@ public class ExchangeService {
         recordEvent(ex, "Handed over to borrower");
     }
 
-    @Transactional
     public void returnItem(Long exchangeId, String notes) {
+        returnItem(exchangeId, notes, null);
+    }
+
+    @Transactional
+    public void returnItem(Long exchangeId, String notes, String conditionAfter) {
         Exchange ex = getExchange(exchangeId);
         if (!"borrowed".equals(ex.getState())) throw new IllegalStateException("Not borrowed");
         if (!ex.getBorrower().getId().equals(AuthContext.getUserId())) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
@@ -123,12 +127,18 @@ public class ExchangeService {
         ex.setState("returned");
         ex.setReturnedAt(Instant.now(clock));
 
+        if (conditionAfter != null && !conditionAfter.isBlank()) {
+            ex.setConditionAfter(toJson(conditionAfter));
+        } else if (notes != null && !notes.isBlank()) {
+            ex.setConditionAfter(toJson("{\"notes\":\"" + notes.replace("\"", "\\\"") + "\"}"));
+        }
+
         long lateUnits = pricingService.calculateLateUnits(ex.getReturnedAt(), ex.getDueAt(), ex.getRateUnit());
         ex.setLateUnits((int) lateUnits);
         ex.setLateFee(pricingService.calculateLateFee(lateUnits, ex.getLateFeePerUnit()));
 
         exchangeRepository.save(ex);
-        recordEvent(ex, "Returned by borrower. Notes: " + notes);
+        recordEvent(ex, "Returned by borrower. Notes: " + (notes != null ? notes : ""));
     }
 
     public void inspect(Long exchangeId, String conditionAfter, BigDecimal damageClaimAmount) {

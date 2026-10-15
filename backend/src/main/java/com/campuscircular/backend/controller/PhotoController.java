@@ -44,9 +44,27 @@ public class PhotoController {
             Path filePath = uploadPath.resolve(filename);
             Files.copy(file.getInputStream(), filePath);
 
+            String normalizedPurpose = "LISTING";
+            if (purpose != null) {
+                String p = purpose.trim().toUpperCase();
+                if ("POST".equals(p) || "LISTING".equals(p) || "ITEM".equals(p)) {
+                    normalizedPurpose = "LISTING";
+                } else if ("CONDITION_BEFORE".equals(p) || "BEFORE".equals(p)) {
+                    normalizedPurpose = "CONDITION_BEFORE";
+                } else if ("CONDITION_AFTER".equals(p) || "AFTER".equals(p)) {
+                    normalizedPurpose = "CONDITION_AFTER";
+                } else if ("EVIDENCE".equals(p) || "DISPUTE".equals(p)) {
+                    normalizedPurpose = "EVIDENCE";
+                } else if ("AVATAR".equals(p) || "PROFILE".equals(p)) {
+                    normalizedPurpose = "AVATAR";
+                } else {
+                    normalizedPurpose = "LISTING";
+                }
+            }
+
             Photo photo = new Photo();
             User u = new User(); u.setId(AuthContext.getUserId()); photo.setUploader(u);
-            photo.setPurpose(purpose);
+            photo.setPurpose(normalizedPurpose);
             photo.setStoredName(filename);
             photo.setMime(file.getContentType());
             photo.setSizeBytes((int) file.getSize());

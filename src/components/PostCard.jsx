@@ -65,7 +65,7 @@ export default function PostCard({ post }) {
           </div>
           <div className="text-neutral-300 dark:text-neutral-700">|</div>
           <div>
-            <span className="text-neutral-400 uppercase text-[9px] font-semibold tracking-wider block">Escrow Deposit</span>
+            <span className="text-neutral-400 uppercase text-[9px] font-semibold tracking-wider block">Security Deposit</span>
             <strong className="text-neutral-900 dark:text-neutral-100 font-semibold tabular-nums">₹{securityDeposit || 0}</strong>
           </div>
         </div>

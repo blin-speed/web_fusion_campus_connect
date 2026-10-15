@@ -37,14 +37,19 @@ public class UserController {
         map.put("department", u.getDepartment());
         map.put("studyYear", u.getStudyYear());
         map.put("year", u.getStudyYear());
-        map.put("verificationStatus", u.getVerificationStatus());
-        map.put("status", u.getVerificationStatus() != null ? u.getVerificationStatus().toUpperCase() : "VERIFIED");
         map.put("suspendedReason", u.getSuspendedReason());
         map.put("location", u.getLocation());
         map.put("bio", u.getBio());
         map.put("createdAt", u.getCreatedAt());
 
-        map.putAll(trustService.getUserTrustStats(u.getId()));
+        Map<String, Object> trustStats = trustService.getUserTrustStats(u.getId());
+        boolean isVerified = Boolean.TRUE.equals(trustStats.get("isVerified"));
+
+        map.put("verificationStatus", isVerified ? "verified" : "pending");
+        map.put("status", u.getSuspendedReason() != null ? "SUSPENDED" : (isVerified ? "VERIFIED" : "ACTIVE"));
+        map.putAll(trustStats);
+        map.put("isVerified", isVerified);
+        map.put("verified", isVerified);
         return map;
     }
 
@@ -69,10 +74,16 @@ public class UserController {
         if (body.containsKey("department")) {
             u.setDepartment((String) body.get("department"));
         }
-        if (body.containsKey("studyYear")) {
-            u.setStudyYear((String) body.get("studyYear"));
-        } else if (body.containsKey("year")) {
-            u.setStudyYear((String) body.get("year"));
+        if (body.containsKey("studyYear") || body.containsKey("year")) {
+            Object yr = body.containsKey("studyYear") ? body.get("studyYear") : body.get("year");
+            if (yr != null) {
+                try {
+                    String s = yr.toString().replaceAll("\\D", "");
+                    if (!s.isEmpty()) {
+                        u.setStudyYear(Integer.parseInt(s));
+                    }
+                } catch (Exception ignored) {}
+            }
         }
         if (body.containsKey("bio")) {
             u.setBio((String) body.get("bio"));

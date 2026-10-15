@@ -2,6 +2,7 @@ package com.campuscircular.backend.controller;
 
 import com.campuscircular.backend.entity.Category;
 import com.campuscircular.backend.entity.Location;
+import com.campuscircular.backend.entity.Photo;
 import com.campuscircular.backend.entity.Post;
 import com.campuscircular.backend.entity.User;
 import com.campuscircular.backend.exception.ApiException;
@@ -30,6 +31,7 @@ public class PostController {
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
     private final ExchangeRepository exchangeRepository;
+    private final PhotoRepository photoRepository;
     private final PricingService pricingService;
     private final Clock clock;
 
@@ -38,6 +40,7 @@ public class PostController {
                           CategoryRepository categoryRepository,
                           LocationRepository locationRepository,
                           ExchangeRepository exchangeRepository,
+                          PhotoRepository photoRepository,
                           PricingService pricingService,
                           Clock clock) {
         this.postRepository = postRepository;
@@ -45,8 +48,30 @@ public class PostController {
         this.categoryRepository = categoryRepository;
         this.locationRepository = locationRepository;
         this.exchangeRepository = exchangeRepository;
+        this.photoRepository = photoRepository;
         this.pricingService = pricingService;
         this.clock = clock;
+    }
+
+    public void attachPhotos(Post post) {
+        if (post == null || post.getId() == null) return;
+        List<Photo> photoEntities = photoRepository.findAll().stream()
+                .filter(p -> post.getId().equals(p.getPostId()))
+                .toList();
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Photo p : photoEntities) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", p.getId());
+            map.put("url", "/api/v1/files/" + p.getId());
+            map.put("mime", p.getMime());
+            list.add(map);
+        }
+        post.setPhotos(list);
+    }
+
+    public void attachPhotos(List<Post> posts) {
+        if (posts == null || posts.isEmpty()) return;
+        posts.forEach(this::attachPhotos);
     }
 
     @GetMapping
@@ -88,12 +113,15 @@ public class PostController {
             posts.sort(Comparator.comparing(p -> p.getId() != null ? p.getId() : 0L));
         }
 
+        attachPhotos(posts);
         return posts;
     }
 
     @GetMapping("/{id}")
     public Post detail(@PathVariable Long id) {
-        return postRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Post p = postRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        attachPhotos(p);
+        return p;
     }
 
     @PostMapping
@@ -161,7 +189,7 @@ public class PostController {
                 location = allLocs.get(0);
             } else {
                 Location defaultLoc = new Location();
-                defaultLoc.setName("Campus Center");
+                defaultLoc.setName("Campus Library");
                 defaultLoc.setLat(19.0645);
                 defaultLoc.setLng(72.8358);
                 location = locationRepository.save(defaultLoc);
@@ -195,17 +223,57 @@ public class PostController {
         String rawRateUnit = (String) payload.get("rateUnit");
         String rateUnit = "HOUR".equalsIgnoreCase(rawRateUnit) ? "HOUR" : "DAY";
 
-        BigDecimal rate = new BigDecimal(payload.getOrDefault("rate", "100").toString());
+        BigDecimal maxDecimal = new BigDecimal("9999999.99");
+
+        BigDecimal rate;
+        try {
+            rate = new BigDecimal(payload.getOrDefault("rate", "100").toString());
+        } catch (Exception e) {
+            rate = new BigDecimal("100");
+        }
+        if (rate.compareTo(BigDecimal.ZERO) < 0) rate = BigDecimal.ZERO;
+        if (rate.compareTo(maxDecimal) > 0) rate = maxDecimal;
+        rate = rate.setScale(2, java.math.RoundingMode.HALF_UP);
+
         BigDecimal minCharge = rate;
-        BigDecimal securityDeposit = new BigDecimal(payload.getOrDefault("securityDeposit", "500").toString());
 
-        BigDecimal lateFeePerUnit = payload.get("lateFeePerUnit") != null
-                ? new BigDecimal(payload.get("lateFeePerUnit").toString())
-                : rate;
+        BigDecimal securityDeposit;
+        try {
+            securityDeposit = new BigDecimal(payload.getOrDefault("securityDeposit", "500").toString());
+        } catch (Exception e) {
+            securityDeposit = new BigDecimal("500");
+        }
+        if (securityDeposit.compareTo(BigDecimal.ZERO) < 0) securityDeposit = BigDecimal.ZERO;
+        if (securityDeposit.compareTo(maxDecimal) > 0) securityDeposit = maxDecimal;
+        securityDeposit = securityDeposit.setScale(2, java.math.RoundingMode.HALF_UP);
 
-        BigDecimal retailValue = payload.get("retailValue") != null
-                ? new BigDecimal(payload.get("retailValue").toString())
-                : securityDeposit.multiply(BigDecimal.valueOf(5));
+        BigDecimal lateFeePerUnit;
+        if (payload.get("lateFeePerUnit") != null) {
+            try {
+                lateFeePerUnit = new BigDecimal(payload.get("lateFeePerUnit").toString());
+            } catch (Exception e) {
+                lateFeePerUnit = rate;
+            }
+        } else {
+            lateFeePerUnit = rate;
+        }
+        if (lateFeePerUnit.compareTo(BigDecimal.ZERO) < 0) lateFeePerUnit = BigDecimal.ZERO;
+        if (lateFeePerUnit.compareTo(maxDecimal) > 0) lateFeePerUnit = maxDecimal;
+        lateFeePerUnit = lateFeePerUnit.setScale(2, java.math.RoundingMode.HALF_UP);
+
+        BigDecimal retailValue;
+        if (payload.get("retailValue") != null) {
+            try {
+                retailValue = new BigDecimal(payload.get("retailValue").toString());
+            } catch (Exception e) {
+                retailValue = securityDeposit.multiply(BigDecimal.valueOf(5));
+            }
+        } else {
+            retailValue = securityDeposit.multiply(BigDecimal.valueOf(5));
+        }
+        if (retailValue.compareTo(BigDecimal.ZERO) < 0) retailValue = BigDecimal.ZERO;
+        if (retailValue.compareTo(maxDecimal) > 0) retailValue = maxDecimal;
+        retailValue = retailValue.setScale(2, java.math.RoundingMode.HALF_UP);
 
         Post post = new Post();
         post.setOwner(owner);
@@ -228,7 +296,23 @@ public class PostController {
         post.setFlagged(false);
         post.setCreatedAt(Instant.now(clock));
 
-        return postRepository.save(post);
+        Post savedPost = postRepository.save(post);
+
+        Object pIds = payload.get("photoIds");
+        if (pIds instanceof List<?> list) {
+            for (Object pid : list) {
+                try {
+                    Long photoId = Long.valueOf(pid.toString());
+                    photoRepository.findById(photoId).ifPresent(ph -> {
+                        ph.setPostId(savedPost.getId());
+                        photoRepository.save(ph);
+                    });
+                } catch (Exception ignored) {}
+            }
+        }
+
+        attachPhotos(savedPost);
+        return savedPost;
     }
 
     @PutMapping("/{id}")
@@ -252,9 +336,11 @@ public class PostController {
 
     @GetMapping("/mine")
     public List<Post> mine() {
-        return postRepository.findAll().stream()
+        List<Post> list = postRepository.findAll().stream()
                 .filter(p -> p.getOwner() != null && p.getOwner().getId().equals(AuthContext.getUserId()))
                 .toList();
+        attachPhotos(list);
+        return list;
     }
 
     @GetMapping("/{id}/quote")

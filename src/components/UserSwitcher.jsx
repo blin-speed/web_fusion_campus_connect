@@ -5,7 +5,7 @@ import { useCurrentUser } from '../context/CurrentUserContext';
 export default function UserSwitcher() {
   const { currentUser, isGuest, logoutToGuest } = useCurrentUser();
 
-  const trustScore = currentUser?.trust?.score != null ? currentUser.trust.score : 'N/A';
+  const trustScore = currentUser?.trust?.score != null ? `${currentUser.trust.score}/5.0` : 'NA';
 
   if (isGuest) {
     return (
@@ -41,12 +41,14 @@ export default function UserSwitcher() {
             {currentUser.name}
           </span>
           <span className="text-[11px] text-neutral-500">
-            {currentUser.department || 'Campus'} • {trustScore}/5.0
+            {currentUser.department || 'Campus'} • {trustScore}
           </span>
         </div>
-        <span className="ml-1 text-[10px] font-semibold tracking-wide px-1.5 py-0.5 border border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">
-          Verified
-        </span>
+        {currentUser?.isVerified && (
+          <span className="ml-1 text-[10px] font-semibold tracking-wide px-1.5 py-0.5 border border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">
+            Verified
+          </span>
+        )}
       </Link>
 
       <button

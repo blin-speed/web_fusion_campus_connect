@@ -56,4 +56,8 @@ public class Post {
     public Boolean getFlagged() { return flagged; } public void setFlagged(Boolean flagged) { this.flagged = flagged; }
     public String getFlagReason() { return flagReason; } public void setFlagReason(String flagReason) { this.flagReason = flagReason; }
     public Instant getCreatedAt() { return createdAt; } public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+    @Transient
+    private java.util.List<java.util.Map<String, Object>> photos = new java.util.ArrayList<>();
+    public java.util.List<java.util.Map<String, Object>> getPhotos() { return photos; }
+    public void setPhotos(java.util.List<java.util.Map<String, Object>> photos) { this.photos = photos; }
 }

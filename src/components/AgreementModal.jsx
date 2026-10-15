@@ -10,7 +10,7 @@ export default function AgreementModal({ isOpen, onClose, quote, onAccept }) {
         {/* FINANCIAL SUMMARY TABLE */}
         <div className="border border-neutral-300 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 p-4 text-xs">
           <div className="font-semibold uppercase tracking-wider text-neutral-400 mb-3 border-b border-neutral-200 dark:border-neutral-800 pb-1 text-[11px]">
-            Financial Escrow Breakdown
+            Payment Breakdown
           </div>
           <div className="space-y-2">
             <div className="flex justify-between">
@@ -18,7 +18,7 @@ export default function AgreementModal({ isOpen, onClose, quote, onAccept }) {
               <span className="font-semibold text-neutral-900 dark:text-neutral-100 tabular-nums">₹{quote.borrowingCharge}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-neutral-600 dark:text-neutral-400">Platform Escrow Fee</span>
+              <span className="text-neutral-600 dark:text-neutral-400">Platform Fee</span>
               <span className="font-semibold text-neutral-900 dark:text-neutral-100 tabular-nums">₹{quote.platformFee}</span>
             </div>
             <div className="flex justify-between">
@@ -26,7 +26,7 @@ export default function AgreementModal({ isOpen, onClose, quote, onAccept }) {
               <span className="font-semibold text-neutral-900 dark:text-neutral-100 tabular-nums">₹{quote.securityDeposit}</span>
             </div>
             <div className="flex justify-between font-semibold text-sm text-neutral-900 dark:text-neutral-100 border-t border-neutral-300 dark:border-neutral-700 pt-2 mt-2">
-              <span>Total Escrow Deposit</span>
+              <span>Total Payable</span>
               <span className="text-orange-600 dark:text-orange-500 tabular-nums">₹{quote.transactionAmount}</span>
             </div>
           </div>
@@ -38,7 +38,7 @@ export default function AgreementModal({ isOpen, onClose, quote, onAccept }) {
             Member Commitment Terms
           </div>
           <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed text-xs">
-            I commit to return <strong>{quote.agreement?.resource || 'the listed hardware'}</strong> on or before the specified deadline in the identical condition received. 
+            I commit to return <strong>{quote.agreement?.resource || 'the listed resource'}</strong> on or before the specified deadline in the identical condition received. 
             I authorize deduction from the security deposit for verified damage or unreturned items.
           </p>
         </div>

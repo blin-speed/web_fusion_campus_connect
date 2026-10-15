@@ -25,6 +25,7 @@ public class AuthController {
     private final LocationRepository locationRepository;
     private final SettingRepository settingRepository;
     private final JwtUtils jwtUtils;
+    private final UserController userController;
 
     @Value("${app.admin-password}")
     private String adminPassword;
@@ -32,11 +33,13 @@ public class AuthController {
     public AuthController(UserRepository userRepository,
                           LocationRepository locationRepository,
                           SettingRepository settingRepository,
-                          JwtUtils jwtUtils) {
+                          JwtUtils jwtUtils,
+                          UserController userController) {
         this.userRepository = userRepository;
         this.locationRepository = locationRepository;
         this.settingRepository = settingRepository;
         this.jwtUtils = jwtUtils;
+        this.userController = userController;
     }
 
     @PostMapping("/auth/login")
@@ -87,7 +90,7 @@ public class AuthController {
         }
 
         String token = jwtUtils.generateToken(user.getId(), "user");
-        return new AuthResponse(token, user);
+        return new AuthResponse(token, userController.enrichUser(user));
     }
 
     @PostMapping("/auth/register")
@@ -114,9 +117,18 @@ public class AuthController {
         User user = new User();
         user.setName(name);
         user.setDepartment(req.get("department") != null ? req.get("department").toString() : "Engineering");
-        user.setStudyYear(req.get("year") != null ? req.get("year").toString()
-                : req.get("studyYear") != null ? req.get("studyYear").toString() : "1st Year");
-        user.setVerificationStatus("verified");
+        Integer studyYear = 1;
+        Object yrObj = req.get("year") != null ? req.get("year") : req.get("studyYear");
+        if (yrObj != null) {
+            try {
+                String s = yrObj.toString().replaceAll("\\D", "");
+                if (!s.isEmpty()) {
+                    studyYear = Integer.parseInt(s);
+                }
+            } catch (Exception ignored) {}
+        }
+        user.setStudyYear(studyYear);
+        user.setVerificationStatus("pending");
         user.setBio(req.get("bio") != null ? req.get("bio").toString() : "Campus member");
         user.setCreatedAt(Instant.now());
 
@@ -140,7 +152,7 @@ public class AuthController {
         settingRepository.save(pwdSetting);
 
         String token = jwtUtils.generateToken(user.getId(), "user");
-        return new AuthResponse(token, user);
+        return new AuthResponse(token, userController.enrichUser(user));
     }
 
     @PostMapping("/admin/login")

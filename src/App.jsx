@@ -84,7 +84,7 @@ function TopBar({ onSearch, darkTheme, onToggleTheme }) {
             Campus<span className="text-orange-600">Connect</span>
           </span>
           <span className="hidden md:inline text-[10px] font-semibold uppercase tracking-wider text-neutral-500 border border-neutral-200 dark:border-neutral-800 px-1.5 py-0.5">
-            Peer Hardware Registry
+            Campus Resource Registry
           </span>
         </Link>
         <div className="w-full sm:flex-1 sm:max-w-xl order-3 sm:order-2">
@@ -141,6 +141,17 @@ const SearchContext = React.createContext({ query: '', setQuery: () => {} });
 export const useSearchContext = () => React.useContext(SearchContext);
 
 function AppInner() {
+  const { authPromptOpen, setAuthPromptOpen } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (authPromptOpen) {
+      setAuthPromptOpen(false);
+      navigate('/login', { state: { from: location } });
+    }
+  }, [authPromptOpen, setAuthPromptOpen, navigate, location]);
+
   const [topbarQuery, setTopbarQuery] = useState('');
   const [backendUp, setBackendUp] = useState(true);
   const [darkTheme, setDarkTheme] = useState(() => {
@@ -162,7 +173,6 @@ function AppInner() {
     request('GET', '/locations').catch(() => setBackendUp(false));
   }, []);
 
-  const location = useLocation();
   const isAdminRoute = location.pathname === '/admin';
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/create-account';
 
@@ -219,7 +229,7 @@ function AppInner() {
         </main>
 
         <footer className="border-t border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 py-4 text-center text-xs text-neutral-500 transition-colors">
-          Campus Connect • Peer-to-Peer Hardware & Lab Lending • INR (₹)
+          Campus Connect • Peer-to-Peer Campus Resource Lending • INR (₹)
         </footer>
 
         <FloatingCreateButton />

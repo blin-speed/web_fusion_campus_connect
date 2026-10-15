@@ -13,20 +13,20 @@ const TabOverview = ({ stats }) => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatBox label="Active Members" value={stats?.activeMembers || stats?.totalUsers || 0} />
         <StatBox label="Listed Resources" value={stats?.resourcesListed || stats?.totalPosts || 0} />
-        <StatBox label="Exchange Protocols" value={stats?.exchanges || stats?.totalExchanges || 0} />
+        <StatBox label="Active Exchanges" value={stats?.exchanges || stats?.totalExchanges || 0} />
         <StatBox label="Overdue Warnings" value={stats?.overdueCount || 0} highlight="text-orange-600" />
         <StatBox label="Open Disputes" value={stats?.openDisputes || 0} highlight="text-red-600" />
         <StatBox label="Gross Volume (₹)" value={`₹${Number(gmv).toLocaleString('en-IN')}`} />
-        <StatBox label="Escrow Deposits (₹)" value={`₹${Number(deposits).toLocaleString('en-IN')}`} />
+        <StatBox label="Security Deposits (₹)" value={`₹${Number(deposits).toLocaleString('en-IN')}`} />
         <StatBox label="Platform Fees (₹)" value={`₹${Number(fees).toLocaleString('en-IN')}`} highlight="text-emerald-600" />
       </div>
 
       <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 space-y-2">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-          Campus Security & Protocol Audit Status
+          Campus Security & System Status
         </div>
         <p className="text-neutral-700 dark:text-neutral-300 text-xs">
-          All financial transactions are secured in escrow accounts. Clock simulation allows advancing real-time schedules for overdue penalty validation.
+          All transactions and security deposits are held safely. Clock simulation allows advancing real-time schedules for overdue penalty validation.
         </p>
       </div>
     </div>
@@ -297,7 +297,7 @@ const TabExchanges = () => {
             <th className="p-3">Owner</th>
             <th className="p-3">Borrower</th>
             <th className="p-3">State</th>
-            <th className="p-3">Escrow (₹)</th>
+            <th className="p-3">Deposit (₹)</th>
             <th className="p-3">Room</th>
           </tr>
         </thead>
@@ -482,7 +482,7 @@ const TabTransactions = () => {
             <th className="p-3">Exchange</th>
             <th className="p-3">Type</th>
             <th className="p-3">Amount (₹)</th>
-            <th className="p-3">Escrow Status</th>
+            <th className="p-3">Status</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -566,12 +566,12 @@ const TabSettings = () => {
       {/* PLATFORM PARAMETERS */}
       <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 space-y-4">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 border-b border-neutral-200 dark:border-neutral-800 pb-2">
-          Global Platform Escrow Parameters
+          Global Platform Financial Parameters
         </div>
 
         <div>
           <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
-            Platform Escrow Commission Fee %
+            Platform Commission Fee %
           </label>
           <div className="flex gap-2 max-w-md">
             <input
@@ -638,7 +638,7 @@ const TabSettings = () => {
       {/* CLOCK SIMULATION & TESTING */}
       <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 space-y-4">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 border-b border-neutral-200 dark:border-neutral-800 pb-2">
-          Temporal Engine & System State Controls
+          System Controls & Clock Simulation
         </div>
         <p className="text-xs text-neutral-500">
           Advance the virtual system clock by 24 hours to trigger overdue return penalties or reset database state.
@@ -680,7 +680,7 @@ export default function Admin() {
       setAdminToken(res.token);
       setToken(res.token);
     } catch (err) {
-      setError(err?.message || 'Invalid admin overseer credentials');
+      setError(err?.message || 'Invalid administrator password');
     }
   };
 
@@ -699,19 +699,22 @@ export default function Admin() {
 
   if (!token) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <div className="w-full max-w-sm border-2 border-neutral-900 dark:border-neutral-100 bg-white dark:bg-neutral-950 p-6 text-xs shadow-2xl">
-          <div className="border-b border-neutral-200 dark:border-neutral-800 pb-3 mb-4">
+      <div className="min-h-screen bg-neutral-100 dark:bg-neutral-950 flex flex-col items-center justify-center p-4 font-sans text-neutral-900 dark:text-neutral-100">
+        <div className="w-full max-w-sm border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 text-xs shadow-xl">
+          <div className="border-b border-neutral-200 dark:border-neutral-800 pb-3 mb-4 flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-              Campus Connect // Protocol Control
+              Campus Connect
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-orange-600 bg-orange-50 dark:bg-orange-950/40 px-1.5 py-0.5 border border-orange-200 dark:border-orange-900">
+              Admin Portal
             </span>
           </div>
 
           <h2 className="text-xl font-light tracking-tight text-neutral-900 dark:text-neutral-100 mb-1">
-            Admin Overseer Access
+            Administrator Sign In
           </h2>
           <p className="text-[11px] text-neutral-500 mb-4">
-            Authentication required to inspect arbitration disputes, financial ledgers, and clock controls.
+            Authorized access only for campus inventory management, disputes, financial audit, and system settings.
           </p>
 
           {error && (
@@ -723,7 +726,7 @@ export default function Admin() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
-                Overseer Master Key
+                Admin Password
               </label>
               <input
                 type="password"
@@ -731,8 +734,8 @@ export default function Admin() {
                 autoFocus
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter Overseer Master Key"
-                className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 p-2 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
+                placeholder="Enter administrator password"
+                className="w-full border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950 p-2 text-xs text-neutral-900 dark:text-neutral-100 focus:border-orange-600 focus:outline-none"
               />
             </div>
 
@@ -740,7 +743,7 @@ export default function Admin() {
               type="submit"
               className="w-full bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:text-neutral-900 py-2.5 font-semibold uppercase tracking-wider text-xs transition-colors"
             >
-              Authenticate Overseer
+              Sign In to Admin
             </button>
             <div className="text-center pt-2">
               <Link to="/" className="text-[11px] text-neutral-400 hover:underline uppercase tracking-wide">
@@ -764,75 +767,95 @@ export default function Admin() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 flex flex-col md:flex-row gap-6 text-xs">
-      {/* SIDEBAR TABS */}
-      <aside className="w-full md:w-56 shrink-0 space-y-1">
-        <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 mb-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
-            Overseer Engine
+    <div className="min-h-screen bg-neutral-100 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans flex flex-col">
+      {/* ADMIN HEADER */}
+      <header className="sticky top-0 z-40 border-b border-neutral-300 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
+            <span className="text-base sm:text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+              Campus<span className="text-orange-600">Connect</span>
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 border border-neutral-300 dark:border-neutral-800 px-2 py-0.5">
+              Admin Console
+            </span>
           </div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-neutral-900 dark:text-neutral-100">
-            Campus Admin
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setActiveTab(t.id)}
-              className={`block w-full text-left px-3 py-2 font-semibold uppercase tracking-wider transition-colors ${
-                activeTab === t.id
-                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900'
-              }`}
+          <div className="flex items-center gap-3">
+            <Link
+              to="/"
+              className="border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors"
             >
-              {t.label}
+              ← Back to App
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setAdminToken(null);
+                setToken(null);
+                navigate('/');
+              }}
+              className="border border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors"
+            >
+              Sign Out
             </button>
-          ))}
+          </div>
         </div>
+      </header>
 
-        <div className="pt-6 border-t border-neutral-300 dark:border-neutral-800 mt-6 space-y-2">
-          <Link
-            to="/"
-            className="block w-full text-left px-3 py-1.5 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 uppercase tracking-wide text-[11px] font-medium"
-          >
-            ← Campus Storefront
-          </Link>
-          <button
-            type="button"
-            onClick={() => {
-              setAdminToken(null);
-              setToken(null);
-              navigate('/');
-            }}
-            className="block w-full text-left px-3 py-1.5 text-red-600 dark:text-red-400 hover:underline uppercase tracking-wide text-[11px] font-semibold"
-          >
-            Sign Out Overseer
-          </button>
-        </div>
-      </aside>
+      {/* ADMIN CONTENT */}
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 flex-1 w-full flex flex-col md:flex-row gap-6 text-xs">
+        {/* SIDEBAR TABS */}
+        <aside className="w-full md:w-56 shrink-0 space-y-1">
+          <div className="border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 mb-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+              Control Center
+            </div>
+            <div className="text-sm font-semibold uppercase tracking-wide text-neutral-900 dark:text-neutral-100">
+              Campus Admin
+            </div>
+          </div>
 
-      {/* MAIN ADMIN WORKSPACE */}
-      <main className="flex-1 space-y-4">
-        <div className="flex items-center justify-between border-b border-neutral-300 dark:border-neutral-800 pb-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-900 dark:text-neutral-100">
-            System // {activeTab.toUpperCase()}
-          </h2>
-          <span className="text-[11px] text-neutral-400 uppercase tracking-wide">
-            Live Protocol Active
-          </span>
-        </div>
+          <div className="space-y-1">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveTab(t.id)}
+                className={`block w-full text-left px-3 py-2 font-semibold uppercase tracking-wider transition-colors ${
+                  activeTab === t.id
+                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
+                    : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </aside>
 
-        {activeTab === 'Overview' && <TabOverview stats={stats} />}
-        {activeTab === 'Listings' && <TabListings />}
-        {activeTab === 'Users' && <TabUsers />}
-        {activeTab === 'Exchanges' && <TabExchanges />}
-        {activeTab === 'Disputes' && <TabDisputes />}
-        {activeTab === 'Transactions' && <TabTransactions />}
-        {activeTab === 'Settings' && <TabSettings />}
-      </main>
+        {/* MAIN ADMIN WORKSPACE */}
+        <main className="flex-1 space-y-4">
+          <div className="flex items-center justify-between border-b border-neutral-300 dark:border-neutral-800 pb-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-900 dark:text-neutral-100">
+              System // {activeTab.toUpperCase()}
+            </h2>
+            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wide">
+              System Operational
+            </span>
+          </div>
+
+          {activeTab === 'Overview' && <TabOverview stats={stats} />}
+          {activeTab === 'Listings' && <TabListings />}
+          {activeTab === 'Users' && <TabUsers />}
+          {activeTab === 'Exchanges' && <TabExchanges />}
+          {activeTab === 'Disputes' && <TabDisputes />}
+          {activeTab === 'Transactions' && <TabTransactions />}
+          {activeTab === 'Settings' && <TabSettings />}
+        </main>
+      </div>
+
+      <footer className="border-t border-neutral-300 dark:border-neutral-800 bg-white dark:bg-neutral-900 py-3 text-center text-xs text-neutral-500">
+        Campus Connect Administration Console
+      </footer>
     </div>
   );
 }

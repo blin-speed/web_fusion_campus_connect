@@ -19,7 +19,16 @@ export function CurrentUserProvider({ children }) {
     return null;
   });
 
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const token = getUserToken();
+    if (!token) return null;
+    try {
+      const stored = localStorage.getItem('current_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch (_e) {
+      return null;
+    }
+  });
   const [users, setUsers] = useState([]);
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [authPromptMessage, setAuthPromptMessage] = useState('Sign in to continue');
@@ -38,10 +47,17 @@ export function CurrentUserProvider({ children }) {
     try {
       const user = await request('GET', `/users/${currentUserId}`);
       if (user) {
-        setCurrentUser(adaptUser(user));
+        const adapted = adaptUser(user);
+        setCurrentUser(adapted);
+        try {
+          localStorage.setItem('current_user', JSON.stringify(adapted));
+        } catch (_e) {}
       }
     } catch (err) {
       console.warn('Could not refresh current user:', err);
+      if (err?.status === 401 || err?.status === 403) {
+        logoutToGuest();
+      }
     }
   }, [currentUserId]);
 
@@ -54,6 +70,9 @@ export function CurrentUserProvider({ children }) {
       refreshCurrentUser();
     } else {
       setCurrentUser(null);
+      try {
+        localStorage.removeItem('current_user');
+      } catch (_e) {}
     }
   }, [currentUserId, refreshCurrentUser]);
 
@@ -65,9 +84,13 @@ export function CurrentUserProvider({ children }) {
       const res = await request('POST', '/auth/login', { body });
       setUserToken(res.token);
       setCurrentUserId(res.user.id);
-      setCurrentUser(adaptUser(res.user));
+      const adapted = adaptUser(res.user);
+      setCurrentUser(adapted);
+      try {
+        localStorage.setItem('current_user', JSON.stringify(adapted));
+      } catch (_e) {}
       setAuthPromptOpen(false);
-      return adaptUser(res.user);
+      return adapted;
     } catch (err) {
       console.error('Login failed:', err);
       throw err;
@@ -75,6 +98,9 @@ export function CurrentUserProvider({ children }) {
   };
 
   const logoutToGuest = () => {
+    try {
+      localStorage.removeItem('current_user');
+    } catch (_e) {}
     setUserToken(null);
     setCurrentUserId(null);
     setCurrentUser(null);
@@ -99,9 +125,13 @@ export function CurrentUserProvider({ children }) {
       setUserToken(res.token);
       await refreshUsers();
       setCurrentUserId(res.user.id);
-      setCurrentUser(adaptUser(res.user));
+      const adapted = adaptUser(res.user);
+      setCurrentUser(adapted);
+      try {
+        localStorage.setItem('current_user', JSON.stringify(adapted));
+      } catch (_e) {}
       setAuthPromptOpen(false);
-      return adaptUser(res.user);
+      return adapted;
     } catch (err) {
       console.error('Registration failed:', err);
       throw err;

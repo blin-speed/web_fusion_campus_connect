@@ -62,7 +62,8 @@ export default function Profile() {
     year,
     bio,
     status = 'ACTIVE',
-    trustScore = 4.8,
+    trustScore = null,
+    isVerified = false,
     successfulExchanges = 0,
     lateReturns = 0,
     disputes = 0,
@@ -88,9 +89,11 @@ export default function Profile() {
           <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 border ${
             isSuspended
               ? 'border-red-600 text-red-600 bg-red-50 dark:bg-red-950/30'
-              : 'border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
+              : isVerified
+              ? 'border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30'
+              : 'border-neutral-400 text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800'
           }`}>
-            {status || 'Active'}
+            {isSuspended ? 'Suspended' : isVerified ? 'Verified Member' : 'Active Member'}
           </span>
         </div>
 
@@ -131,17 +134,25 @@ export default function Profile() {
               Weighted Trust Metric
             </span>
             <div className="text-4xl font-light tabular-nums text-neutral-900 dark:text-neutral-100 my-2">
-              {Number(trustScore).toFixed(1)} <span className="text-base text-neutral-400 font-normal">/ 5.0</span>
+              {trustScore != null ? (
+                <>
+                  {Number(trustScore).toFixed(1)} <span className="text-base text-neutral-400 font-normal">/ 5.0</span>
+                </>
+              ) : (
+                <span className="text-3xl font-light text-neutral-400">NA</span>
+              )}
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
-              {trustScore >= 4.5 && (
+              {trustScore != null && trustScore >= 4.5 && (
                 <span className="px-2 py-0.5 border border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-[10px] font-semibold uppercase tracking-wider">
                   Top Tier Lender
                 </span>
               )}
-              <span className="px-2 py-0.5 border border-neutral-400 text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 text-[10px] font-semibold uppercase tracking-wider">
-                Verified Identity
-              </span>
+              {isVerified && (
+                <span className="px-2 py-0.5 border border-emerald-600 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-[10px] font-semibold uppercase tracking-wider">
+                  Verified Identity
+                </span>
+              )}
             </div>
           </div>
 

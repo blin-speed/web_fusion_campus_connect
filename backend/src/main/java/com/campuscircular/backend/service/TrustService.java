@@ -47,15 +47,21 @@ public class TrustService {
                 .toList();
 
         long ratingsCount = ratedExchanges.size();
-        double trustScore = 4.8;
+        Double trustScore = null;
         if (ratingsCount > 0) {
             double sum = ratedExchanges.stream().mapToInt(e -> e.getRating()).sum();
-            trustScore = BigDecimal.valueOf(sum / ratingsCount)
+            trustScore = BigDecimal.valueOf(sum / (double) ratingsCount)
                     .setScale(1, RoundingMode.HALF_UP)
                     .doubleValue();
         }
 
+        boolean isVerified = ratedExchanges.stream()
+                .anyMatch(e -> ("settled".equals(e.getState()) || "rated".equals(e.getState()))
+                            && e.getRating() != null && e.getRating() >= 3);
+
         stats.put("trustScore", trustScore);
+        stats.put("isVerified", isVerified);
+        stats.put("verified", isVerified);
         stats.put("successfulExchanges", successfulExchanges);
         stats.put("lateReturns", lateReturns);
         stats.put("disputes", disputes);

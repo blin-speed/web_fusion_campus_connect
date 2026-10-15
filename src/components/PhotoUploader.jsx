@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { uploadPhoto } from '../api/client';
 
-export default function PhotoUploader({ purpose = 'post', onUpload, maxPhotos = 4 }) {
+export default function PhotoUploader({ purpose = 'LISTING', onUpload, maxPhotos = 4 }) {
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -46,7 +46,7 @@ export default function PhotoUploader({ purpose = 'post', onUpload, maxPhotos = 
       <div className="flex flex-wrap gap-3">
         {photos.map((p) => (
           <div key={p.id} className="relative w-24 h-24 border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
-            <img src={`/api/v1/files/${p.id}`} alt="Hardware photo" className="object-cover w-full h-full" />
+            <img src={`/api/v1/files/${p.id}`} alt="Resource photo" className="object-cover w-full h-full" />
             <button
               type="button"
               onClick={() => removePhoto(p.id)}
